@@ -1,0 +1,21 @@
+{
+  "test": [
+    "./src/**/*.ts",
+    "./src/**/*.tsx"
+  ],
+  "presets": [
+    [
+      "@babel/env",
+      {
+        "targets": {
+          "node": "8.0.0"
+        },
+        "modules": false
+      }
+    ],
+    "@babel/typescript"
+  ],
+  "plugins": [
+    "@babel/proposal-class-properties"
+  ]
+}

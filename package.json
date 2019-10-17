@@ -1,35 +1,62 @@
 {
-  "name": "homebridge-melcloud",
-  "version": "0.3.4",
-  "description": "Homebridge plugin for Mitsubishi Melcloud",
-  "note": "peerDependencies is hardcoded to peerDepdendencies in homebridge!!!",
-  "main": "index.js",
+  "name": "homebridge-melcloud-ts",
+  "version": "0.3.5",
+  "description": "TypeScript version of a Homebridge plugin for Mitsubishi Melcloud",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "echo \"Error: configure and run homebridge to start\" && exit 1"
+    "test": "echo \"Error: no tests implemented\" && exit 1",
+    "start": "echo \"Error: configure and run homebridge to start\" && exit 1",
+    "dev": "rollup -c -w",
+    "homebridge-dev": "npm run build && DEBUG=* homebridge -D -U ~/.homebridge-dev -P ./",
+    "build": "rollup -c",
+    "prepublishOnly": "npm run build"
   },
   "engines": {
-    "node": ">4.0.0",
-    "homebridge": ">=0.2.0"
+    "node": ">=8.0.0",
+    "homebridge": ">=0.4.50"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ilcato/homebridge-melcloud.git"
+    "url": "https://github.com/Dids/homebridge-melcloud-ts.git"
   },
   "keywords": [
     "homebridge-plugin",
     "Mitsubishi",
     "Melcloud",
     "homekit",
-    "Siri"
+    "Siri",
+    "ts",
+    "TypeScript"
   ],
   "dependencies": {
-    "request": "^2.65.0"
+    "@babel/polyfill": "^7.6.0",
+    "@types/request": "^2.48.3",
+    "@types/request-promise-native": "^1.0.17",
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.7"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.6.4",
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/preset-env": "^7.6.3",
+    "@babel/preset-typescript": "^7.6.0",
+    "prettier": "^1.18.2",
+    "rollup": "^1.24.0",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "tslint": "^5.20.0",
+    "tslint-config-standard": "^8.0.1"
   },
   "author": "ilcato",
+  "contributors": [
+    "Dids"
+  ],
+  "maintainers": [
+    "Dids"
+  ],
   "license": "GPL2",
   "bugs": {
-    "url": "https://github.com/ilcato/homebridge-melcloud/issues"
+    "url": "https://github.com/Dids/homebridge-melcloud-ts/issues"
   },
-  "homepage": "https://github.com/ilcato/homebridge-melcloud"
+  "homepage": "https://github.com/Dids/homebridge-melcloud-ts"
 }

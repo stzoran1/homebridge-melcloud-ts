@@ -1,24 +1,17 @@
 {
     "bridge": {
-        "name": "Homebridge",
+        "name": "Homebridge (MELCloud)",
         "username": "CC:22:3D:E3:CE:30",
         "port": 51826,
         "pin": "031-45-154"
     },
-    
     "description": "This is an example configuration file. You can use this as a template for creating your own configuration file.",
-
-    "platforms": [
-            {
-            "platform": "Melcloud",
-            "name": "Melcloud",
-            "language": "0",
-            "username": "PUT USERNAME OF YOUR MELCLOUD ACCOUNT HERE",
-            "password": "PUT PASSWORD OF YOUR MELCLOUD ACCOUNT HERE"
-        }
-
-    ],
-
-    "accessories": [
-    ]
+    "platforms": [{
+        "platform": "MELCloud",
+        "name": "MELCloud",
+        "language": "0",
+        "username": "PUT USERNAME OF YOUR MELCLOUD ACCOUNT HERE",
+        "password": "PUT PASSWORD OF YOUR MELCLOUD ACCOUNT HERE"
+    }],
+    "accessories": []
 }

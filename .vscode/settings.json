@@ -1,0 +1,13 @@
+{
+  "standard.autoFixOnSave": false,
+  "standard.enable": false,
+  "editor.tabSize": 2,
+  "typescript.format.insertSpaceBeforeFunctionParenthesis": true,
+  "editor.detectIndentation": false,
+  "files.exclude": {
+    "node_modules/": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.tslint": true
+  }
+}
