@@ -27,7 +27,18 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
-    "lib": ["esnext"]
+    "lib": ["esnext"],
+    "typeRoots": [ "./src/@types", "./node_modules/@types"],
+    "paths": {
+      "@/*" : ["src/*"]
+    }
   },
-  "include": ["src"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
