@@ -1,3 +1,5 @@
+<!--[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)-->
+
 # homebridge-melcloud-ts
 
 An up-to-date TypeScript version of [ilcato's Homebridge plugin](https://github.com/ilcato/homebridge-melcloud) for Mitsubishi Melcloud.

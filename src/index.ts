@@ -1,23 +1,43 @@
-require('@babel/polyfill')
+import {
+  API,
+  CharacteristicEventTypes,
+  CharacteristicGetCallback,
+  CharacteristicSetCallback,
+  CharacteristicValue,
+  HAP,
+  IndependentPlatformPlugin,
+  Logging,
+  PlatformAccessory,
+  PlatformConfig
+} from 'homebridge'
+
+// TODO: Test whether this supports multiple platforms or not, then configure "config.schema.json" accordingly
+
+// TODO: Get the plugin verified:
+//       https://github.com/homebridge/verified#requirements
+
+// FIXME: Somehow migrate this from an ancient hap-nodejs version to a Homebridge plugin
+// https://developers.homebridge.io/#/
+// https://github.com/homebridge/homebridge-examples/blob/master/independent-platform-example-typescript/src/independent-platform.ts
+// https://github.com/homebridge/HAP-NodeJS-examples/blob/master/light-example-typescript/src/light.ts
+// https://github.com/Sunoo/homebridge-camera-ffmpeg/blob/master/src/index.ts
 
 import { IMELCloudAPIClient, MELCloudAPIClient } from './api/client'
 import { IMELCloudConfig, validateConfig } from './config'
 
-export interface IService extends HAPNodeJS.Service {
-
-}
+export type IService = HAPNodeJS.Service
 
 export interface ICharacteristic extends HAPNodeJS.Characteristic {
   displayName?: string
   UUID?: string
   controlService?: IService
-  characteristics?: ICharacteristic[]
-  props?: { perms?: any[] }
+  characteristics?: Array<ICharacteristic>
+  props?: { perms?: Array<any> }
 }
 
 let Service: IService
 let Characteristic: ICharacteristic
-export default function (homebridge: any) {
+export default function(homebridge: any) {
   // Setup the core functionality
   Service = homebridge.hap.Service as HAPNodeJS.Service
   Characteristic = homebridge.hap.Characteristic as HAPNodeJS.Characteristic
@@ -40,8 +60,8 @@ export interface IMELCloudBridgedAccessory {
   serialNumber: any
   airInfo: any
   buildingId: any
-  services: { controlService: IService, characteristics: ICharacteristic[] }[]
-  getServices (): { controlService: IService, characteristics: ICharacteristic[] }[]
+  services: Array<{ controlService: IService, characteristics: Array<ICharacteristic> }>
+  getServices (): Array<{ controlService: IService, characteristics: Array<ICharacteristic> }>
 }
 
 export class MELCloudBridgedAccessory implements IMELCloudBridgedAccessory {
@@ -54,20 +74,20 @@ export class MELCloudBridgedAccessory implements IMELCloudBridgedAccessory {
   serialNumber: any
   airInfo: any
   buildingId: any
-  services: { controlService: IService, characteristics: ICharacteristic[] }[]
+  services: Array<{ controlService: IService, characteristics: Array<ICharacteristic> }>
 
-  constructor (services: { controlService: IService, characteristics: ICharacteristic[] }[]) {
+  constructor(services: Array<{ controlService: IService, characteristics: Array<ICharacteristic> }>) {
     this.services = services
   }
 
-  getServices (): { controlService: IService, characteristics: ICharacteristic[] }[] {
-    const services = [] as { controlService: IService, characteristics: ICharacteristic[] }[]
+  getServices(): Array<{ controlService: IService, characteristics: Array<ICharacteristic> }> {
+    const services = [] as Array<{ controlService: IService, characteristics: Array<ICharacteristic> }>
     const informationService = this.platform.getInformationService(this)
     services.push(informationService)
 
-    for (let service of this.services) {
+    for (const service of this.services) {
       const controlService = service.controlService
-      for (let serviceCharacteristic of service.characteristics) {
+      for (const serviceCharacteristic of service.characteristics) {
         let characteristic = controlService.getCharacteristic(serviceCharacteristic)
         if (!characteristic) {
           characteristic = controlService.addCharacteristic(serviceCharacteristic)
@@ -97,17 +117,17 @@ export interface IMELCloudPlatform {
   CurrentVerticalTiltAngleUUID: any
   TargetVerticalTiltAngleUUID: any
   currentAirInfoExecution: number
-  airInfoExecutionPending: any[]
+  airInfoExecutionPending: Array<any>
   accessories (callback: any): void
   getDevices (callback: any): Promise<any>
-  createAccessories (building: any, devices: any, foundAccessories: any[]): void
+  createAccessories (building: any, devices: any, foundAccessories: Array<any>): void
   proxyAirInfo (callback: any, characteristic: ICharacteristic, service: any, homebridgeAccessory: any, value: any, operation: any): Promise<any>
   getAccessoryValue (callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any): void
   setAccessoryValue (callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any): Promise<any>
   updateApplicationOptions (UseFahrenheit: any): Promise<any>
   getInformationService (homebridgeAccessory: any): any
   bindCharacteristicEvents (characteristic: ICharacteristic, service: IService, homebridgeAccessory: any): void
-  getServices (homebridgeAccessory: any): IService[]
+  getServices (homebridgeAccessory: any): Array<IService>
 }
 
 export class MELCloudPlatform implements IMELCloudPlatform {
@@ -133,9 +153,9 @@ export class MELCloudPlatform implements IMELCloudPlatform {
   CurrentVerticalTiltAngleUUID: any
   TargetVerticalTiltAngleUUID: any
   currentAirInfoExecution: number
-  airInfoExecutionPending: any[]
+  airInfoExecutionPending: Array<any>
 
-  constructor (log: any, config: IMELCloudConfig) {
+  constructor(log: any, config: IMELCloudConfig) {
     // Store a reference to the logger
     if (!log) {
       throw new Error('Invalid or null Homebridge logger')
@@ -171,69 +191,69 @@ export class MELCloudPlatform implements IMELCloudPlatform {
     this.airInfoExecutionPending = []
   }
 
-  async accessories (callback: any) {
+  async accessories(callback: any) {
     this.log('Fetching MELCloud devices..')
     await this.client.login()
-    .then((response) => {
-      this.UseFahrenheit = response.UseFahrenheit
-      this.log('UseFahrenheit:', this.UseFahrenheit)
-      return this.getDevices(callback)
-    })
-    .catch((err) => {
-      this.log('There was a problem logging in to MELCloud:', err)
-      return callback([])
-    })
+      .then((response) => {
+        this.UseFahrenheit = response.UseFahrenheit
+        this.log('UseFahrenheit:', this.UseFahrenheit)
+        return this.getDevices(callback)
+      })
+      .catch((err) => {
+        this.log('There was a problem logging in to MELCloud:', err)
+        return callback([])
+      })
   }
 
-  async getDevices (callback: any): Promise<any> {
+  async getDevices(callback: any): Promise<any> {
     await this.client.listDevices()
-    .then((response: any) => {
+      .then((response: any) => {
       // Prepare an array of accessories
-      const foundAccessories = [] as any[]
+        const foundAccessories = [] as Array<any>
 
-      // Parse and loop through all buildings
-      for (let building of response) {
-        this.log('Building:', building) // FIXME: Debug, remove after verifying
-
-        // (Re)create the accessories
-        this.createAccessories(building, building.Structure.Devices, foundAccessories)
-
-        // Parse and loop through all floors
-        for (let floor of building.Structure.Floors) {
-          this.log('Floor:', floor) // FIXME: Debug, remove after verifying
+        // Parse and loop through all buildings
+        for (const building of response) {
+          this.log('Building:', building) // FIXME: Debug, remove after verifying
 
           // (Re)create the accessories
-          this.createAccessories(building, floor.Devices, foundAccessories)
+          this.createAccessories(building, building.Structure.Devices, foundAccessories)
 
-          // Parse and loop through all floor areas
-          for (let floorArea of floor.Areas) {
-            this.log('Floor area:', floorArea) // FIXME: Debug, remove after verifying
-
-            // (Re)create the accessories
-            this.createAccessories(building, floorArea.Devices, foundAccessories)
-          }
-
-          // Parse and loop through all building areas
-          for (let buildingArea of building.Structure.Areas) {
-            this.log('Building area:', buildingArea) // FIXME: Debug, remove after verifying
+          // Parse and loop through all floors
+          for (const floor of building.Structure.Floors) {
+            this.log('Floor:', floor) // FIXME: Debug, remove after verifying
 
             // (Re)create the accessories
-            this.createAccessories(building, buildingArea.Devices, foundAccessories)
+            this.createAccessories(building, floor.Devices, foundAccessories)
+
+            // Parse and loop through all floor areas
+            for (const floorArea of floor.Areas) {
+              this.log('Floor area:', floorArea) // FIXME: Debug, remove after verifying
+
+              // (Re)create the accessories
+              this.createAccessories(building, floorArea.Devices, foundAccessories)
+            }
+
+            // Parse and loop through all building areas
+            for (const buildingArea of building.Structure.Areas) {
+              this.log('Building area:', buildingArea) // FIXME: Debug, remove after verifying
+
+              // (Re)create the accessories
+              this.createAccessories(building, buildingArea.Devices, foundAccessories)
+            }
           }
+
+          // Return all found accessories
+          return callback(foundAccessories)
         }
-
-        // Return all found accessories
-        return callback(foundAccessories)
-      }
-    })
-    .catch((err: Error) => {
-      this.log(err)
-    })
+      })
+      .catch((err: Error) => {
+        this.log(err)
+      })
   }
 
-  createAccessories (building: any, devices: any, foundAccessories: any[]): void {
+  createAccessories(building: any, devices: any, foundAccessories: Array<any>): void {
     // Loop through all MELCloud devices
-    for (let device of devices) {
+    for (const device of devices) {
       // Create an accessory for each device
       const accessory = new MELCloudBridgedAccessory([{
         controlService: new IService.Thermostat(device.DeviceName),
@@ -268,7 +288,7 @@ export class MELCloudPlatform implements IMELCloudPlatform {
     }
   }
 
-  async proxyAirInfo (callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any, operation: any): Promise<any> {
+  async proxyAirInfo(callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any, operation: any): Promise<any> {
     if (homebridgeAccessory.airInfo !== null) {
       this.log('Data already available for:', homebridgeAccessory.name, '-', characteristic.displayName)
       operation(callback, characteristic, service, homebridgeAccessory, value)
@@ -286,43 +306,43 @@ export class MELCloudPlatform implements IMELCloudPlatform {
       this.currentAirInfoExecution++
 
       await this.client.getDevice(homebridgeAccessory.id, homebridgeAccessory.buildingId)
-      .then((response: any) => {
-        homebridgeAccessory.airInfo = response
-        operation(callback, characteristic, service, homebridgeAccessory, value)
+        .then((response: any) => {
+          homebridgeAccessory.airInfo = response
+          operation(callback, characteristic, service, homebridgeAccessory, value)
 
-        // Cache airInfo data for 1 minute
-        setTimeout(() => {
+          // Cache airInfo data for 1 minute
+          setTimeout(() => {
+            homebridgeAccessory.airInfo = null
+          }, 60 * 1000)
+        })
+        .catch((err: Error) => {
+          this.log(err)
           homebridgeAccessory.airInfo = null
-        }, 60 * 1000)
-      })
-      .catch((err: Error) => {
-        this.log(err)
-        homebridgeAccessory.airInfo = null
-        callback()
-      })
-      .finally(() => {
-        this.currentAirInfoExecution--
-        if (this.airInfoExecutionPending.length) {
-          const args = this.airInfoExecutionPending.shift()
-          this.log('Dequeuing remote request for:', args[3].name, '-', args[1].displayName)
-          this.proxyAirInfo.apply(this, args)
-        }
-      })
+          callback()
+        })
+        .finally(() => {
+          this.currentAirInfoExecution--
+          if (this.airInfoExecutionPending.length) {
+            const args = this.airInfoExecutionPending.shift()
+            this.log('Dequeuing remote request for:', args[3].name, '-', args[1].displayName)
+            this.proxyAirInfo.apply(this, args)
+          }
+        })
     } else {
       this.log('Queing remote request data for:', homebridgeAccessory.name, '-', characteristic.displayName)
       this.airInfoExecutionPending.push(arguments)
     }
   }
 
-  getAccessoryValue (callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any): void {
-    let accessoryInfo = homebridgeAccessory.airInfo
+  getAccessoryValue(callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any): void {
+    const accessoryInfo = homebridgeAccessory.airInfo
     if (characteristic.UUID === homebridgeAccessory.platform.CurrentHeatingCoolingStateUUID) {
       if (accessoryInfo.Power === false) {
         callback(undefined, Characteristic.CurrentHeatingCoolingState.OFF)
       } else {
         switch (accessoryInfo.OperationMode) {
           case 1:
-            return callback(undefined,Characteristic.CurrentHeatingCoolingState.HEAT)
+            return callback(undefined, Characteristic.CurrentHeatingCoolingState.HEAT)
           case 3:
             return callback(undefined, Characteristic.CurrentHeatingCoolingState.COOL)
           default:
@@ -362,27 +382,27 @@ export class MELCloudPlatform implements IMELCloudPlatform {
         return callback(undefined, Characteristic.TemperatureDisplayUnits.CELSIUS)
       }
     } else if (characteristic.UUID === homebridgeAccessory.platform.RotationSpeedUUID) {
-      let SetFanSpeed = accessoryInfo.SetFanSpeed
-      let NumberOfFanSpeeds = accessoryInfo.NumberOfFanSpeeds
-      let fanSpeed = SetFanSpeed / NumberOfFanSpeeds * 100.0
+      const SetFanSpeed = accessoryInfo.SetFanSpeed
+      const NumberOfFanSpeeds = accessoryInfo.NumberOfFanSpeeds
+      const fanSpeed = SetFanSpeed / NumberOfFanSpeeds * 100.0
       return callback(undefined, fanSpeed)
     } else if (characteristic.UUID === homebridgeAccessory.platform.CurrentHorizontalTiltAngleUUID || characteristic.UUID === homebridgeAccessory.platform.TargetHorizontalTiltAngleUUID) {
-      let VaneHorizontal = accessoryInfo.VaneHorizontal
-      let HorizontalTilt = -90.0 + 45.0 * (VaneHorizontal - 1)
+      const VaneHorizontal = accessoryInfo.VaneHorizontal
+      const HorizontalTilt = -90.0 + 45.0 * (VaneHorizontal - 1)
       return callback(undefined, HorizontalTilt)
     } else if (characteristic.UUID === homebridgeAccessory.platform.CurrentVerticalTiltAngleUUID || characteristic.UUID === homebridgeAccessory.platform.TargetVerticalTiltAngleUUID) {
-      let VaneVertical = accessoryInfo.VaneVertical
-      let VerticallTilt = 90.0 - 45.0 * (5 - VaneVertical)
+      const VaneVertical = accessoryInfo.VaneVertical
+      const VerticallTilt = 90.0 - 45.0 * (5 - VaneVertical)
       callback(undefined, VerticallTilt)
     } else {
       return callback(undefined, 0)
     }
   }
 
-  async setAccessoryValue (callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any): Promise<any> {
+  async setAccessoryValue(callback: any, characteristic: ICharacteristic, service: IService, homebridgeAccessory: any, value: any): Promise<any> {
     // this.log('setAccessoryValue ->', 'homebridgeAccessory:', homebridgeAccessory)
     const self = homebridgeAccessory.platform
-    let accessoryInfo = homebridgeAccessory.airInfo
+    const accessoryInfo = homebridgeAccessory.airInfo
     if (characteristic.UUID === homebridgeAccessory.platform.TargetHeatingCoolingStateUUID) {
       switch (value) {
         case Characteristic.TargetHeatingCoolingState.OFF:
@@ -435,34 +455,34 @@ export class MELCloudPlatform implements IMELCloudPlatform {
     homebridgeAccessory.airInfo.HasPendingCommand = true
 
     await self.client.setDeviceData(JSON.stringify(homebridgeAccessory.airInfo))
-    .catch((err: Error) => {
-      self.log(err)
-    })
-    .finally(() => {
-      return callback()
-    })
+      .catch((err: Error) => {
+        self.log(err)
+      })
+      .finally(() => {
+        return callback()
+      })
   }
 
-  async updateApplicationOptions (UseFahrenheit: any): Promise<any> {
+  async updateApplicationOptions(UseFahrenheit: any): Promise<any> {
     await this.client.updateOptions(this.UseFahrenheit)
-    .catch((err: Error) => {
-      this.log(err)
-    })
+      .catch((err: Error) => {
+        this.log(err)
+      })
   }
 
-  getInformationService (homebridgeAccessory: any) {
+  getInformationService(homebridgeAccessory: any) {
     const informationService = new Service.AccessoryInformation()
-    .setCharacteristic(Characteristic.Name, homebridgeAccessory.name)
-    .setCharacteristic(Characteristic.Manufacturer, homebridgeAccessory.manufacturer)
-    .setCharacteristic(Characteristic.Model, homebridgeAccessory.model)
-    .setCharacteristic(Characteristic.SerialNumber, homebridgeAccessory.serialNumber)
+      .setCharacteristic(Characteristic.Name, homebridgeAccessory.name)
+      .setCharacteristic(Characteristic.Manufacturer, homebridgeAccessory.manufacturer)
+      .setCharacteristic(Characteristic.Model, homebridgeAccessory.model)
+      .setCharacteristic(Characteristic.SerialNumber, homebridgeAccessory.serialNumber)
     return informationService
   }
 
-  bindCharacteristicEvents (characteristic: ICharacteristic, service: IService, homebridgeAccessory: any): void {
+  bindCharacteristicEvents(characteristic: ICharacteristic, service: IService, homebridgeAccessory: any): void {
     let readOnly = true
     if (characteristic.props && characteristic.props.perms) {
-      for (let perm of characteristic.props.perms) {
+      for (const perm of characteristic.props.perms) {
         if (perm === 'pw') {
           readOnly = false
         }
@@ -482,13 +502,13 @@ export class MELCloudPlatform implements IMELCloudPlatform {
     })
   }
 
-  getServices (homebridgeAccessory: any): any[] {
-    const services = [] as HAPNodeJS.Service[]
+  getServices(homebridgeAccessory: any): Array<any> {
+    const services = [] as Array<HAPNodeJS.Service>
     const informationService = homebridgeAccessory.platform.getInformationService(homebridgeAccessory)
     services.push(informationService)
 
-    for (let service of homebridgeAccessory.services) {
-      for (let serviceCharacteristic of service.characteristics) {
+    for (const service of homebridgeAccessory.services) {
+      for (const serviceCharacteristic of service.characteristics) {
         let characteristic = service.controlService.getCharacteristic(serviceCharacteristic)
         if (characteristic === undefined) {
           characteristic = service.controlService.addCharacteristic(serviceCharacteristic)

@@ -33,7 +33,7 @@ export interface IMELCloudConfig {
   password: string
 }
 
-export function validateConfig (config: IMELCloudConfig) {
+export function validateConfig(config: IMELCloudConfig): void {
   if (!config.language) {
     config.language = MELCloudLanguage.English
   }
