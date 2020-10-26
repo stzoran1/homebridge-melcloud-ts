@@ -1,7 +1,8 @@
 {
+  "displayName": "Homebridge MELCloud",
   "name": "homebridge-melcloud-ts",
-  "version": "0.3.6",
-  "description": "TypeScript version of a Homebridge plugin for Mitsubishi Melcloud",
+  "version": "0.3.7",
+  "description": "Homebridge plugin for MELCloud",
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no tests implemented\" && exit 1",
@@ -12,8 +13,8 @@
     "prepublishOnly": "npm run build"
   },
   "engines": {
-    "node": ">=8.0.0",
-    "homebridge": ">=0.4.50"
+    "node": ">=10",
+    "homebridge": ">=1.0.0"
   },
   "repository": {
     "type": "git",
@@ -29,25 +30,25 @@
     "TypeScript"
   ],
   "dependencies": {
-    "@babel/polyfill": "^7.6.0",
-    "@types/request": "^2.48.3",
+    "@babel/polyfill": "^7.12.1",
+    "@types/request": "^2.48.5",
     "@types/request-promise-native": "^1.0.17",
-    "dts-gen": "^0.5.8",
-    "hap-nodejs": "^0.5.0",
+    "dts-gen": "^0.6.0",
+    "hap-nodejs": "^0.8.2",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.7"
   },
   "devDependencies": {
-    "@babel/core": "^7.6.4",
-    "@babel/plugin-proposal-class-properties": "^7.5.5",
-    "@babel/preset-env": "^7.6.3",
-    "@babel/preset-typescript": "^7.6.0",
-    "prettier": "^1.18.2",
-    "rollup": "^1.24.0",
+    "@babel/core": "^7.12.3",
+    "@babel/plugin-proposal-class-properties": "^7.12.1",
+    "@babel/preset-env": "^7.12.1",
+    "@babel/preset-typescript": "^7.12.1",
+    "prettier": "^2.1.2",
+    "rollup": "^2.32.1",
     "rollup-plugin-babel": "^4.3.3",
     "rollup-plugin-node-resolve": "^5.2.0",
-    "tslint": "^5.20.0",
-    "tslint-config-standard": "^8.0.1"
+    "tslint": "^5.20.1",
+    "tslint-config-standard": "^9.0.0"
   },
   "author": "ilcato",
   "contributors": [
