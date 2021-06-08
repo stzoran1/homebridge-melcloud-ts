@@ -61,4 +61,9 @@ jobs:
     - name: Install Dependencies
       run: npm install
     - name: Publish Package
-      run: npm publish . --tag dev
+      # run: npm publish . --tag dev
+      uses: JS-DevTools/npm-publish@v1
+      with:
+        token: ${{ secrets.NPM_TOKEN }}
+        tag: dev
+        check-version: false
