@@ -31,6 +31,8 @@ jobs:
         key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-${{ matrix.node-version }}-
+    - name: Install Dependencies
+      run: npm install
     ## FIXME: Migrate to eslint and re-enable
     # - name: Test Package
     #   run: npm run lint-check
@@ -56,5 +58,7 @@ jobs:
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
+    - name: Install Dependencies
+      run: npm install
     - name: Publish Package
       run: npm publish . --tag dev
