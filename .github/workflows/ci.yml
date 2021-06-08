@@ -66,4 +66,4 @@ jobs:
       with:
         token: ${{ secrets.NPM_TOKEN }}
         tag: dev
-        check-version: false
+        check-version: true
