@@ -34,4 +34,4 @@ jobs:
     - run: npm run lint-check
     - run: npm run build
     ## TODO: Add automatic development build deployments to npm
-    - npm publish . --tag dev
+    - run: npm publish . --tag dev
