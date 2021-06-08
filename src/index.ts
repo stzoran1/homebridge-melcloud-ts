@@ -126,8 +126,8 @@ interface IMELCloudPlatform extends DynamicPlatformPlugin {
   TargetVerticalTiltAngleUUID: any
   currentAirInfoExecution: number
   airInfoExecutionPending: Array<any>
-  accessories (callback: any): void
-  getDevices (callback: any): Promise<any>
+  accessories (): Promise<Array<any>>
+  getDevices (): Promise<Array<any>>
   createAccessories (building: any, devices: any, foundAccessories: Array<any>): void
   proxyAirInfo (callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any, operation: any): Promise<any>
   getAccessoryValue (callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any): void
@@ -211,10 +211,11 @@ class MELCloudPlatform implements IMELCloudPlatform {
     api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
       log.info('MELCloud platform finished launching')
 
-      log.info('Attempting to get accessories..')
-      this.accessories((result: any) => {
-        log.info('Got accessories:', result)
-      })
+      // log.info('Attempting to get accessories..')
+      // this.accessories((result: any) => {
+      //   log.info('Got accessories:', result)
+      // })
+
       // await this.accessories()
       //   .then(() => {
       //     log.info('Got accessories')
@@ -290,18 +291,27 @@ class MELCloudPlatform implements IMELCloudPlatform {
    * Get accessories from MELCloud devices.
    * @param callback
    */
-  /*async*/ accessories(callback: any)/*: Promise<any>*/ {
-    this.log('Getting accessories..')
-    /*await*/ this.client.login()
-      .then((response: any) => {
-        this.UseFahrenheit = response.UseFahrenheit
-        this.log('UseFahrenheit:', this.UseFahrenheit)
-        return this.getDevices(callback)
-      })
-      .catch((err) => {
-        this.log('There was a problem logging in to MELCloud:', err)
-        return callback([])
-      })
+  accessories(): Promise<Array<any>> {
+    return new Promise((resolve) => {
+      this.log('Getting accessories..')
+      this.client.login()
+        .then((response: any) => {
+          this.UseFahrenheit = response.UseFahrenheit
+          this.log('UseFahrenheit:', this.UseFahrenheit)
+          this.getDevices()
+            .then((devices: any) => {
+              return resolve(devices)
+            })
+            .catch((err) => {
+              this.log('There was a problem logging in to MELCloud:', err)
+              return resolve([])
+            })
+        })
+        .catch((err) => {
+          this.log('There was a problem logging in to MELCloud:', err)
+          return resolve([])
+        })
+    })
   }
 
   // --------------------------- CUSTOM METHODS ---------------------------
@@ -327,51 +337,55 @@ class MELCloudPlatform implements IMELCloudPlatform {
   //   this.accessories.splice(0, this.accessories.length) // clear out the array
   // }
 
-  async getDevices(callback: any): Promise<any> {
-    this.log('Getting devices..')
-    await this.client.listDevices()
-      .then((response: any) => {
-        // Prepare an array of accessories
-        const foundAccessories = [] as Array<any>
+  async getDevices(): Promise<Array<any>> {
+    return new Promise((resolve, reject) => {
+      this.log('Getting devices..')
+      this.client.listDevices()
+        .then((response: any) => {
+          // Prepare an array of accessories
+          const foundAccessories = [] as Array<any>
 
-        // Parse and loop through all buildings
-        for (const building of response) {
-          this.log('Building:', building) // FIXME: Debug, remove after verifying
-
-          // (Re)create the accessories
-          this.createAccessories(building, building.Structure.Devices, foundAccessories)
-
-          // Parse and loop through all floors
-          for (const floor of building.Structure.Floors) {
-            this.log('Floor:', floor) // FIXME: Debug, remove after verifying
+          // Parse and loop through all buildings
+          for (const building of response) {
+            this.log('Building:', building) // FIXME: Debug, remove after verifying
 
             // (Re)create the accessories
-            this.createAccessories(building, floor.Devices, foundAccessories)
+            this.createAccessories(building, building.Structure.Devices, foundAccessories)
 
-            // Parse and loop through all floor areas
-            for (const floorArea of floor.Areas) {
-              this.log('Floor area:', floorArea) // FIXME: Debug, remove after verifying
-
-              // (Re)create the accessories
-              this.createAccessories(building, floorArea.Devices, foundAccessories)
-            }
-
-            // Parse and loop through all building areas
-            for (const buildingArea of building.Structure.Areas) {
-              this.log('Building area:', buildingArea) // FIXME: Debug, remove after verifying
+            // Parse and loop through all floors
+            for (const floor of building.Structure.Floors) {
+              this.log('Floor:', floor) // FIXME: Debug, remove after verifying
 
               // (Re)create the accessories
-              this.createAccessories(building, buildingArea.Devices, foundAccessories)
+              this.createAccessories(building, floor.Devices, foundAccessories)
+
+              // Parse and loop through all floor areas
+              for (const floorArea of floor.Areas) {
+                this.log('Floor area:', floorArea) // FIXME: Debug, remove after verifying
+
+                // (Re)create the accessories
+                this.createAccessories(building, floorArea.Devices, foundAccessories)
+              }
+
+              // Parse and loop through all building areas
+              for (const buildingArea of building.Structure.Areas) {
+                this.log('Building area:', buildingArea) // FIXME: Debug, remove after verifying
+
+                // (Re)create the accessories
+                this.createAccessories(building, buildingArea.Devices, foundAccessories)
+              }
             }
+
+            // Return all found accessories
+            // return callback(foundAccessories)
+            // return foundAccessories
+            return resolve(foundAccessories)
           }
-
-          // Return all found accessories
-          return callback(foundAccessories)
-        }
-      })
-      .catch((err: Error) => {
-        this.log(err.message)
-      })
+        })
+        .catch((err: Error) => {
+          return reject(err)
+        })
+    })
   }
 
   createAccessories(building: any, devices: any, foundAccessories: Array<any>): void {
