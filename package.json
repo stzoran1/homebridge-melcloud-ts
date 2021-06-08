@@ -1,9 +1,13 @@
 {
   "displayName": "Homebridge MELCloud",
   "name": "homebridge-melcloud-ts",
-  "version": "0.4.1-rc1",
+  "version": "0.4.1-rc9",
   "description": "Homebridge plugin for MELCloud",
   "main": "dist/index.js",
+  "files": [
+    "dist/*.js",
+    "dist/**/*.js"
+  ],
   "scripts": {
     "clean": "rimraf ./dist ./coverage",
     "build": "rimraf ./dist ./coverage && tsc",
@@ -12,6 +16,7 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm run lint-check",
     "postpublish": "npm run clean",
+    "publish-next": "npm publish . --tag next",
     "watch": "npm run clean && tsc --watch"
   },
   "engines": {
@@ -43,15 +48,17 @@
     "url": "https://github.com/Dids/homebridge-melcloud-ts/issues"
   },
   "homepage": "https://github.com/Dids/homebridge-melcloud-ts",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  },
   "devDependencies": {
     "@types/node": "^15.12.2",
-    "@types/request": "^2.48.5",
+    "@types/node-fetch": "^2.5.10",
     "@types/request-promise-native": "^1.0.17",
     "@typescript-eslint/eslint-plugin": "^4.26.1",
     "@typescript-eslint/parser": "^4.26.1",
     "eslint": "^7.28.0",
     "homebridge": "^1.3.4",
-    "request-promise-native": "^1.0.9",
     "rimraf": "^3.0.2",
     "typescript": "^4.3.2"
   }

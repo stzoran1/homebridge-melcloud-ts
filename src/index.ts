@@ -209,7 +209,19 @@ class MELCloudPlatform implements IMELCloudPlatform {
      * This event can also be used to start discovery of new accessories.
      */
     api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
-      log.info('MELCloud platform \'didFinishLaunching\'')
+      log.info('MELCloud platform finished launching')
+
+      log.info('Attempting to get accessories..')
+      this.accessories((result: any) => {
+        log.info('Got accessories:', result)
+      })
+      // await this.accessories()
+      //   .then(() => {
+      //     log.info('Got accessories')
+      //   })
+      //   .catch((err: Error) => {
+      //     log.error(err.message)
+      //   })
     })
   }
 
@@ -278,9 +290,9 @@ class MELCloudPlatform implements IMELCloudPlatform {
    * Get accessories from MELCloud devices.
    * @param callback
    */
-  async accessories(callback: any): Promise<any> {
-    this.log('Fetching MELCloud devices..')
-    await this.client.login()
+  /*async*/ accessories(callback: any)/*: Promise<any>*/ {
+    this.log('Getting accessories..')
+    /*await*/ this.client.login()
       .then((response: any) => {
         this.UseFahrenheit = response.UseFahrenheit
         this.log('UseFahrenheit:', this.UseFahrenheit)
@@ -316,6 +328,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   // }
 
   async getDevices(callback: any): Promise<any> {
+    this.log('Getting devices..')
     await this.client.listDevices()
       .then((response: any) => {
         // Prepare an array of accessories
@@ -362,6 +375,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   createAccessories(building: any, devices: any, foundAccessories: Array<any>): void {
+    this.log('Creating accessories..')
     // Loop through all MELCloud devices
     for (const device of devices) {
       // Create an accessory for each device
@@ -407,6 +421,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   async proxyAirInfo(callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any, operation: any): Promise<any> {
+    this.log('Proxying air info..')
     if (homebridgeAccessory.airInfo !== null) {
       this.log('Data already available for:', homebridgeAccessory.name, '-', characteristic.displayName)
       operation(callback, characteristic, service, homebridgeAccessory, value)
@@ -463,6 +478,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   getAccessoryValue(callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any): void {
+    this.log('Getting accessory value..')
     const accessoryInfo = homebridgeAccessory.airInfo
     if (characteristic.UUID === this.CurrentHeatingCoolingStateUUID) {
       if (accessoryInfo.Power === false) {
@@ -528,6 +544,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   async setAccessoryValue(callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any): Promise<any> {
+    this.log('Setting accessory value..')
     // this.log('setAccessoryValue ->', 'homebridgeAccessory:', homebridgeAccessory)
     const accessoryInfo = homebridgeAccessory.airInfo
     if (characteristic.UUID === this.TargetHeatingCoolingStateUUID) {
@@ -591,6 +608,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   async updateApplicationOptions(UseFahrenheit: boolean): Promise<any> {
+    this.log('Updating application options..')
     await this.client.updateOptions(this.UseFahrenheit)
       .catch((err: Error) => {
         this.log(err.message)
@@ -598,6 +616,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   getInformationService(homebridgeAccessory: IMELCloudBridgedAccessory) {
+    this.log('Getting information service..')
     const informationService = new hap.Service.AccessoryInformation()
       .setCharacteristic(hap.Characteristic.Name, homebridgeAccessory.name)
       .setCharacteristic(hap.Characteristic.Manufacturer, homebridgeAccessory.manufacturer)
@@ -607,6 +626,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   bindCharacteristicEvents(characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory): void {
+    this.log('Binding characteristic events..')
     let readOnly = true
     if (characteristic.props?.perms) {
       for (const perm of characteristic.props.perms) {
@@ -630,6 +650,7 @@ class MELCloudPlatform implements IMELCloudPlatform {
   }
 
   getServices(homebridgeAccessory: IMELCloudBridgedAccessory): Array<any> {
+    this.log('Getting services..')
     const services = [] as Array<Service>
     const informationService = this.getInformationService(homebridgeAccessory)
     services.push(informationService)

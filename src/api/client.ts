@@ -1,8 +1,10 @@
-import { Logging, PlatformConfig } from 'homebridge'
-import { Response, ResponseAsJSON } from 'request'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Logging } from 'homebridge'
+// import { Response, ResponseAsJSON } from 'request'
 import { IMELCloudConfig } from '../config'
 
-import request from 'request-promise-native'
+// import request from 'request-promise-native'
+import fetch, { HeadersInit } from 'node-fetch'
 // import url from 'url'
 
 const MELCLOUD_API_ROOT = 'https://app.melcloud.com/Mitsubishi.Wifi.Client'
@@ -16,10 +18,10 @@ export interface IMELCloudAPIClient {
   log: Logging
   config: IMELCloudConfig
   ContextKey: null
-  get (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<ResponseAsJSON>
-  post (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<ResponseAsJSON>
+  get (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
+  post (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
   login (): Promise<unknown> // TODO: Add proper type support
-  listDevices (): Promise<ResponseAsJSON> // TODO: Add proper type support
+  listDevices (): Promise<any> // TODO: Add proper type support
   getDevice (deviceId: string, buildingId: string): Promise<unknown> // TODO: Add proper type support
   updateOptions (useFahrenheit: boolean): Promise<unknown> // TODO: Add proper type support
   setDeviceData (data: unknown): Promise<unknown> // TODO: Add proper type support
@@ -47,10 +49,22 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     this.ContextKey = null
   }
 
-  async get(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<ResponseAsJSON> {
-    // this.log('GET', url, formData, headers)
-    const response: Response = await request.get({ url: url, formData: formData, headers: headers })
-    return response.toJSON()
+  async get(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any> {
+    this.log('GET', url, formData, headers)
+    formData = JSON.stringify(formData) as any
+    if (!headers) {
+      headers = {
+        'Content-Type': 'application/json'
+      }
+    }
+    const response = await fetch(url, {
+      method: 'GET',
+      body: formData as any,
+      headers: headers as any
+    })
+    return await response.json()
+    // const response: Response = await request.get({ url: url, formData: formData, headers: headers })
+    // return response.toJSON()
     // return new Promise(async(resolve, reject) => {
     //   await request.get({ url: url, formData: formData, headers: headers })
     //     .then((response: Response) => {
@@ -67,10 +81,25 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
-  async post(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }, body?: unknown): Promise<ResponseAsJSON> {
-    // this.log('POST', url, formData, headers)
-    const response: Response = await request.post({ url: url, formData: formData, headers: headers, body: body })
-    return response.toJSON()
+  async post(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }, body?: unknown): Promise<any> {
+    this.log('POST', url, formData, headers, body)
+    if (!formData) {
+      formData = body as any
+    }
+    formData = JSON.stringify(formData) as any
+    if (!headers) {
+      headers = {
+        'Content-Type': 'application/json'
+      }
+    }
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData as any,
+      headers: headers as any
+    })
+    return await response.json()
+    // const response: Response = await request.post({ url: url, formData: formData, headers: headers, body: body })
+    // return response.toJSON()
     // return new Promise(async(resolve, reject) => {
     //   await request.post({ url: url, formData: formData, headers: headers, body: body })
     //     .then((response: Response) => {
@@ -98,10 +127,11 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
       Language: this.config.language,
       Password: this.config.password,
       Persist: 'true'
-    }) as unknown as { LoginData: { ContextKey: null } }
+    }) // as unknown as { LoginData: { ContextKey: null } }
     if (!response) {
       throw new Error(`Failed to login: invalid JSON response: ${response}`)
     }
+    this.log.info('login -> response:', JSON.stringify(response))
     this.ContextKey = response.LoginData.ContextKey
     return response.LoginData
     // return new Promise(async(resolve, reject) => {
@@ -126,12 +156,13 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
   }
 
   // TODO: Add proper type support
-  async listDevices(): Promise<ResponseAsJSON> {
+  async listDevices(): Promise<any> {
     // this.log('LIST DEVICES')
     const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LIST_DEVICES}`, undefined, { 'X-MitsContextKey': this.ContextKey })
     if (!response) {
       throw new Error(`Failed to list devices: invalid JSON response: ${response}`)
     }
+    this.log.info('listDevices:', JSON.stringify(response))
     return response
     // return new Promise(async(resolve, reject) => {
     //   await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LIST_DEVICES}`, undefined, { 'X-MitsContextKey': this.ContextKey })
@@ -151,6 +182,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     if (!response) {
       throw new Error(`Failed to get device: invalid JSON response: ${response}`)
     }
+    this.log.info('getDevice -> response:', JSON.stringify(response))
     return response
     // return new Promise(async(resolve, reject) => {
     //   await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_GET_DEVICE}?id=${deviceId}&BuildingID=${buildingId}`, undefined, { 'X-MitsContextKey': this.ContextKey })
@@ -184,6 +216,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     if (!response) {
       throw new Error(`Failed to update options: invalid JSON response: ${response}`)
     }
+    this.log.info('updateOptions -> response:', JSON.stringify(response))
     return response
     // return new Promise(async(resolve, reject) => {
     //   await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_UPDATE_OPTIONS}`, `{
@@ -213,6 +246,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     if (!response) {
       throw new Error(`Failed to set device data: invalid JSON response: ${response}`)
     }
+    this.log.info('setDeviceData -> response:', JSON.stringify(response))
     return response
     // return new Promise(async(resolve, reject) => {
     //   await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_SET_DEVICE}`, undefined, { 'X-MitsContextKey': this.ContextKey, 'content-type': 'application/json' }, data)
