@@ -1,3 +1,5 @@
+import { PlatformConfig } from 'homebridge'
+
 export enum MELCloudLanguage {
   English = 0,
   Български,
@@ -27,7 +29,7 @@ export enum MELCloudLanguage {
   Slovenščina
 }
 
-export interface IMELCloudConfig {
+export interface IMELCloudConfig extends PlatformConfig {
   language: MELCloudLanguage
   username: string
   password: string

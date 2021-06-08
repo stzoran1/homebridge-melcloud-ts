@@ -1,4 +1,4 @@
-import { Logging } from 'homebridge'
+import { Logging, PlatformConfig } from 'homebridge'
 import { Response, ResponseAsJSON } from 'request'
 import { IMELCloudConfig } from '../config'
 
