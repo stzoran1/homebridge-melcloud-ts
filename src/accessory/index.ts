@@ -31,6 +31,7 @@ import {
 // import { IMELCloudAccessoryConfig, validateMELCloudAccessoryConfig } from '../config'
 import { IMELCloudPlatform } from '../platform'
 import { IDevice } from '../api/client'
+import { Accessory } from 'hap-nodejs'
 
 export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   readonly service: Service
@@ -45,6 +46,8 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   currentTemperature: number
   targetTemperature: number
   temperatureDisplayUnits: number
+  currentRelativeHumidity: number
+  targetRelativeHumidity: number
   coolingThresholdTemperature: number
   heatingThresholdTemperature: number
   // rotationSpeed: number
@@ -64,6 +67,10 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
 
   handleTemperatureDisplayUnitsGet(): number
   handleTemperatureDisplayUnitsSet(value: CharacteristicValue): void
+
+  handleCurrentRelativeHumidityGet(): number
+  handleTargetRelativeHumidityGet(): number
+  handleTargetRelativeHumiditySet(value: CharacteristicValue): void
 
   handleCoolingThresholdTemperatureGet(): number
   handleCoolingThresholdTemperatureSet(value: CharacteristicValue): void
@@ -127,6 +134,8 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   public currentTemperature: number
   public targetTemperature: number
   public temperatureDisplayUnits: number
+  public currentRelativeHumidity: number
+  public targetRelativeHumidity: number
   public coolingThresholdTemperature: number
   public heatingThresholdTemperature: number
   // public rotationSpeed: number
@@ -171,6 +180,8 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     this.currentTemperature = -270
     this.targetTemperature = 10
     this.temperatureDisplayUnits = this.api.hap.Characteristic.TemperatureDisplayUnits.CELSIUS
+    this.currentRelativeHumidity = 0
+    this.targetRelativeHumidity = 0
     this.coolingThresholdTemperature = 10
     this.heatingThresholdTemperature = 0
     // this.rotationSpeed = 0
@@ -360,6 +371,47 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     this.log.debug('Triggered SET TemperatureDisplayUnits:', value)
 
     this.temperatureDisplayUnits = Math.min(1, Math.max(0, value as number))
+  }
+
+  /**
+   * Handle requests to get the current value of the "Current Relative Humidity" characteristic
+   */
+  handleCurrentRelativeHumidityGet(): number {
+    this.log.debug('Triggered GET CurrentRelativeHumidity')
+
+    const minCurrentRelativeHumidity = 0
+    const maxCurrentRelativeHumidity = 100
+    const currentValue = Math.min(maxCurrentRelativeHumidity, Math.max(minCurrentRelativeHumidity, this.currentRelativeHumidity))
+
+    this.log.debug('Returning CurrentRelativeHumidity with value:', currentValue)
+    return currentValue
+  }
+
+  /**
+   * Handle requests to get the current value of the "Target Relative Humidity" characteristic
+   */
+  handleTargetRelativeHumidityGet(): number {
+    this.log.debug('Triggered GET TargetRelativeHumidity')
+
+    const minTargetRelativeHumidity = 0
+    const maxTargetRelativeHumidity = 100
+    const currentValue = Math.min(maxTargetRelativeHumidity, Math.max(minTargetRelativeHumidity, this.targetRelativeHumidity))
+
+    this.log.debug('Returning TargetRelativeHumidity with value:', currentValue)
+    return currentValue
+  }
+
+  /**
+   * Handle requests to set the "Target Relative Humidity" characteristic
+   */
+  handleTargetRelativeHumiditySet(value: CharacteristicValue): void {
+    this.log.debug('Triggered SET TargetRelativeHumidity:', value)
+
+    const minTargetRelativeHumidity = 0
+    const maxTargetRelativeHumidity = 100
+    const currentValue = Math.min(maxTargetRelativeHumidity, Math.max(minTargetRelativeHumidity, value as number))
+
+    this.targetRelativeHumidity = currentValue
   }
 
   /**
