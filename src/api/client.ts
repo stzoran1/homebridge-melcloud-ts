@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Logging } from 'homebridge'
+import { Logger } from 'homebridge'
 // import { Response, ResponseAsJSON } from 'request'
-import { IMELCloudConfig } from '../config'
+import { IMELCloudConfig, MELCloudLanguage } from '../config'
 
 // import request from 'request-promise-native'
-import fetch, { HeadersInit } from 'node-fetch'
+import fetch from 'node-fetch'
 // import url from 'url'
 
 const MELCLOUD_API_ROOT = 'https://app.melcloud.com/Mitsubishi.Wifi.Client'
@@ -14,25 +14,120 @@ const MELCLOUD_API_GET_DEVICE = 'Device/Get'
 const MELCLOUD_API_SET_DEVICE = 'Device/SetAta'
 const MELCLOUD_API_UPDATE_OPTIONS = 'User/UpdateApplicationOptions'
 
+export interface ILoginResponse {
+  ErrorId: number | null
+  ErrorMessage: string | null
+  LoginStatus: number | null
+  UserId: number | null
+  RandomKey: string | null
+  AppVersionAnnouncement: string | null
+  LoginData: ILoginData | null
+  ListPendingInvite: Array<unknown> | null
+  ListOwnershipChangeRequest: Array<unknown> | null
+  ListPendingAnnouncement: Array<unknown> | null
+  LoginMinutes: number | null
+  LoginAttempts: number | null
+}
+
+export interface ILoginData {
+  ContextKey: string | null
+  Client: number | null
+  Terms: number | null
+  AL: number | null
+  ML: number | null
+  CMI: boolean | null
+  IsStaff: boolean | null
+  CUTF: boolean | null
+  CAA: boolean | null
+  ReceiveCountryNotifications: boolean | null
+  ReceiveAllNotifications: boolean | null
+  CACA: false | null
+  CAGA: false | null
+  MaximumDevices: number | null
+  ShowDiagnostics: false | null
+  Language: MELCloudLanguage | null
+  Country: number | null
+  RealClient: number | null
+  Name: string | null
+  UseFahrenheit: boolean | null
+  Duration: number | null
+  Expiry: string | null // FIXME: Parse as ISO string (2022-06-09T10:40:24.27), also re-use ContextKey until hitting expiration date?
+  CMSC: boolean | null
+  PartnerApplicationVersion: null
+  EmailSettingsReminderShown: boolean | null
+  EmailUnitErrors: number | null
+  EmailCommsErrors: number | null
+  ChartSeriesHidden: number | null
+  IsImpersonated: boolean | null
+  LanguageCode: string | null
+  CountryName: string | null
+  CurrencySymbol: string | null
+  SupportEmailAddress: string | null
+  DateSeperator: string | null
+  TimeSeperator: string | null
+  AtwLogoFile: string | null
+  DECCReport: boolean | null
+  CSVReport1min: boolean | null
+  HidePresetPanel: boolean | null
+  EmailSettingsReminderRequired: boolean | null
+  TermsText: string | null
+  MapView: boolean | null
+  MapZoom: number | null
+  MapLongitude: number | null
+  MapLatitude: number | null
+}
+
+export interface IDeviceBuilding {
+  // FIXME: Implement all the missing things!
+  ID: number | null
+  Structure: {
+    Floors: Array<{
+      Devices: Array<IDevice> | null
+      Areas: Array<{
+        Devices: Array<IDevice> | null
+      }> | null
+    }> | null
+    Areas: Array<{
+      Devices: Array<IDevice> | null
+    }> | null
+    Devices: Array<IDevice> | null
+  } | null
+}
+
+export interface IDevice {
+  DeviceID: number | null
+  DeviceName: string | null
+  BuildingID: number | null
+  SerialNumber: string | null
+  Device: {
+    DeviceType: number | null
+  } | null
+}
+
+export interface IDeviceGet {
+  // FIXME: Implement all the missing things!
+  EffectiveFlags: number
+}
+
 export interface IMELCloudAPIClient {
-  log: Logging
+  log: Logger
   config: IMELCloudConfig
-  ContextKey: null
+  ContextKey: string | null
   get (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
   post (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
-  login (): Promise<unknown> // TODO: Add proper type support
-  listDevices (): Promise<any> // TODO: Add proper type support
-  getDevice (deviceId: string, buildingId: string): Promise<unknown> // TODO: Add proper type support
-  updateOptions (useFahrenheit: boolean): Promise<unknown> // TODO: Add proper type support
-  setDeviceData (data: unknown): Promise<unknown> // TODO: Add proper type support
+  login (): Promise<ILoginData>
+  listDevices (): Promise<Array<IDeviceBuilding>>
+  getDevice (deviceId: string, buildingId: string): Promise<IDeviceGet>
+  updateOptions (useFahrenheit: boolean): Promise<unknown> // FIXME: Add proper type support
+  setDeviceData (data: unknown): Promise<unknown> // FIXME: Add proper type support
 }
 
 export class MELCloudAPIClient implements IMELCloudAPIClient {
-  log: Logging
+  log: Logger
   config: IMELCloudConfig
-  ContextKey: null
+  ContextKey: string | null
 
-  constructor(log: Logging, config: IMELCloudConfig) {
+  constructor(log: Logger, config: IMELCloudConfig) {
     // Validate and store a reference to the logger
     if (!log) {
       throw new Error('Invalid or null Homebridge logger')
@@ -50,7 +145,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
   }
 
   async get(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any> {
-    this.log('GET', url, formData, headers)
+    this.log.info('GET', url, formData, headers)
     formData = JSON.stringify(formData) as any
     if (!headers) {
       headers = {
@@ -82,7 +177,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
   }
 
   async post(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }, body?: unknown): Promise<any> {
-    this.log('POST', url, formData, headers, body)
+    this.log.info('POST', url, formData, headers, body)
     if (!formData) {
       formData = body as any
     }
@@ -116,8 +211,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
-  // TODO: Add proper type support
-  async login(): Promise<unknown> {
+  async login(): Promise<ILoginData> {
     // this.log('LOGIN')
     const response = await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LOGIN}`, {
       AppVersion: '1.19.0.8',
@@ -127,12 +221,16 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
       Language: this.config.language,
       Password: this.config.password,
       Persist: 'true'
-    }) // as unknown as { LoginData: { ContextKey: null } }
+    }) as ILoginResponse
     if (!response) {
-      throw new Error(`Failed to login: invalid JSON response: ${response}`)
+      throw new Error(`Failed to login: invalid JSON response: ${JSON.stringify(response)}`)
     }
     this.log.info('login -> response:', JSON.stringify(response))
-    this.ContextKey = response.LoginData.ContextKey
+    if (response.LoginData) {
+      this.ContextKey = response.LoginData.ContextKey
+    } else {
+      throw new Error(`Failed to login: failed to parse response: ${JSON.stringify(response)}`)
+    }
     return response.LoginData
     // return new Promise(async(resolve, reject) => {
     //   await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LOGIN}`, {
@@ -155,12 +253,11 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
-  // TODO: Add proper type support
-  async listDevices(): Promise<any> {
+  async listDevices(): Promise<Array<IDeviceBuilding>> {
     // this.log('LIST DEVICES')
-    const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LIST_DEVICES}`, undefined, { 'X-MitsContextKey': this.ContextKey })
+    const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LIST_DEVICES}`, undefined, { 'X-MitsContextKey': this.ContextKey }) as Array<IDeviceBuilding>
     if (!response) {
-      throw new Error(`Failed to list devices: invalid JSON response: ${response}`)
+      throw new Error(`Failed to list devices: invalid JSON response: ${JSON.stringify(response)}`)
     }
     this.log.info('listDevices:', JSON.stringify(response))
     return response
@@ -175,12 +272,11 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
-  // TODO: Add proper type support
-  async getDevice(deviceId: string, buildingId: string): Promise<unknown> {
+  async getDevice(deviceId: string, buildingId: string): Promise<IDeviceGet> {
     // this.log('GET DEVICE', deviceId, buildingId)
-    const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_GET_DEVICE}?id=${deviceId}&BuildingID=${buildingId}`, undefined, { 'X-MitsContextKey': this.ContextKey })
+    const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_GET_DEVICE}?id=${deviceId}&BuildingID=${buildingId}`, undefined, { 'X-MitsContextKey': this.ContextKey }) as IDeviceGet
     if (!response) {
-      throw new Error(`Failed to get device: invalid JSON response: ${response}`)
+      throw new Error(`Failed to get device: invalid JSON response: ${JSON.stringify(response)}`)
     }
     this.log.info('getDevice -> response:', JSON.stringify(response))
     return response

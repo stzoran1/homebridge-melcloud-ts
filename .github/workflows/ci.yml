@@ -33,9 +33,8 @@ jobs:
           ${{ runner.os }}-node-${{ matrix.node-version }}-
     - name: Install Dependencies
       run: npm install
-    ## FIXME: Migrate to eslint and re-enable
-    # - name: Test Package
-    #   run: npm run lint-check
+    - name: Test Package
+      run: npm run lint-check
     - name: Build Package
       run: npm run build
 

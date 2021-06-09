@@ -1,4 +1,14 @@
-import { PlatformConfig } from 'homebridge'
+import { AccessoryConfig, PlatformConfig } from 'homebridge'
+
+/**
+ * This is the name of the platform that users will use to register the plugin in the Homebridge config.json
+ */
+export const PLATFORM_NAME = 'MELCloud'
+
+/**
+ * This must match the name of your plugin as defined the package.json
+ */
+export const PLUGIN_NAME = 'homebridge-melcloud-ts'
 
 export enum MELCloudLanguage {
   English = 0,
@@ -35,7 +45,7 @@ export interface IMELCloudConfig extends PlatformConfig {
   password: string
 }
 
-export function validateConfig(config: IMELCloudConfig): void {
+export function validateMELCloudConfig(config: IMELCloudConfig): void {
   if (!config.language) {
     config.language = MELCloudLanguage.English
   }
@@ -44,6 +54,28 @@ export function validateConfig(config: IMELCloudConfig): void {
   }
   if (!config.password) {
     throw new Error('MELCloud config is missing password')
+  }
+}
+
+export interface IMELCloudAccessoryConfig extends AccessoryConfig {
+  manufacturer: string
+  model: string
+  serial: string
+}
+
+export function validateMELCloudAccessoryConfig(config: IMELCloudAccessoryConfig): void {
+  if (!config.name) {
+    throw new Error('MELCloud accessory config is missing name')
+  }
+
+  if (!config.manufacturer) {
+    config.manufacturer = 'Mitsubishi'
+  }
+  if (!config.model) {
+    throw new Error('MELCloud accessory config is missing model')
+  }
+  if (!config.serial) {
+    config.serial = ''
   }
 }
 
