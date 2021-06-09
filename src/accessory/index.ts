@@ -31,7 +31,6 @@ import {
 // import { IMELCloudAccessoryConfig, validateMELCloudAccessoryConfig } from '../config'
 import { IMELCloudPlatform } from '../platform'
 import { IDevice } from '../api/client'
-// import { Accessory } from 'hap-nodejs'
 
 export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   readonly service: Service
@@ -46,11 +45,14 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   currentTemperature: number
   targetTemperature: number
   temperatureDisplayUnits: number
-  rotationSpeed: number
-  currentHorizontalTiltAngle: number
-  targetHorizontalTiltAngle: number
-  currentVerticalTiltAngle: number
-  targetVerticalTiltAngle: number
+  coolingThresholdTemperature: number
+  heatingThresholdTemperature: number
+  // rotationSpeed: number
+  // swingMode: number
+  // currentHorizontalTiltAngle: number
+  // targetHorizontalTiltAngle: number
+  // currentVerticalTiltAngle: number
+  // targetVerticalTiltAngle: number
 
   handleCurrentHeatingCoolingStateGet(): number
   handleTargetHeatingCoolingStateGet(): number
@@ -63,20 +65,26 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   handleTemperatureDisplayUnitsGet(): number
   handleTemperatureDisplayUnitsSet(value: CharacteristicValue): void
 
-  handleRotationSpeedGet(): number
-  handleRotationSpeedSet(value: CharacteristicValue): void
+  handleCoolingThresholdTemperatureGet(): number
+  handleCoolingThresholdTemperatureSet(value: CharacteristicValue): void
 
-  handleCurrentHorizontalTiltAngleGet(): number
-  handleCurrentHorizontalTiltAngleSet(value: CharacteristicValue): void
+  handleHeatingThresholdTemperatureGet(): number
+  handleHeatingThresholdTemperatureSet(value: CharacteristicValue): void
 
-  handleTargetHorizontalTiltAngleGet(): number
-  handleTargetHorizontalTiltAngleSet(value: CharacteristicValue): void
+  // handleRotationSpeedGet(): number
+  // handleRotationSpeedSet(value: CharacteristicValue): void
 
-  handleCurrentVerticalTiltAngleGet(): number
-  handleCurrentVerticalTiltAngleSet(value: CharacteristicValue): void
+  // handleCurrentHorizontalTiltAngleGet(): number
+  // handleCurrentHorizontalTiltAngleSet(value: CharacteristicValue): void
 
-  handleTargetVerticalTiltAngleGet(): number
-  handleTargetVerticalTiltAngleSet(value: CharacteristicValue): void
+  // handleTargetHorizontalTiltAngleGet(): number
+  // handleTargetHorizontalTiltAngleSet(value: CharacteristicValue): void
+
+  // handleCurrentVerticalTiltAngleGet(): number
+  // handleCurrentVerticalTiltAngleSet(value: CharacteristicValue): void
+
+  // handleTargetVerticalTiltAngleGet(): number
+  // handleTargetVerticalTiltAngleSet(value: CharacteristicValue): void
 
   // readonly log: Logging
   // readonly config: IMELCloudAccessoryConfig
@@ -119,11 +127,13 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   public currentTemperature: number
   public targetTemperature: number
   public temperatureDisplayUnits: number
-  public rotationSpeed: number
-  public currentHorizontalTiltAngle: number
-  public targetHorizontalTiltAngle: number
-  public currentVerticalTiltAngle: number
-  public targetVerticalTiltAngle: number
+  public coolingThresholdTemperature: number
+  public heatingThresholdTemperature: number
+  // public rotationSpeed: number
+  // public currentHorizontalTiltAngle: number
+  // public targetHorizontalTiltAngle: number
+  // public currentVerticalTiltAngle: number
+  // public targetVerticalTiltAngle: number
 
   // public readonly log: Logging
   // public readonly config: IMELCloudAccessoryConfig
@@ -158,14 +168,16 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     // initialize accessory state
     this.currentHeatingCoolingState = this.api.hap.Characteristic.CurrentHeatingCoolingState.OFF
     this.targetHeatingCoolingState = this.api.hap.Characteristic.TargetHeatingCoolingState.OFF
-    this.currentTemperature = 0
-    this.targetTemperature = 0
+    this.currentTemperature = -270
+    this.targetTemperature = 10
     this.temperatureDisplayUnits = this.api.hap.Characteristic.TemperatureDisplayUnits.CELSIUS
-    this.rotationSpeed = 0
-    this.currentHorizontalTiltAngle = 0
-    this.targetHorizontalTiltAngle = 0
-    this.currentVerticalTiltAngle = 0
-    this.targetVerticalTiltAngle = 0
+    this.coolingThresholdTemperature = 10
+    this.heatingThresholdTemperature = 0
+    // this.rotationSpeed = 0
+    // this.currentHorizontalTiltAngle = 0
+    // this.targetHorizontalTiltAngle = 0
+    // this.currentVerticalTiltAngle = 0
+    // this.targetVerticalTiltAngle = 0
 
     // set accessory information
     const device = accessory.context.device as IDevice
@@ -182,7 +194,10 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
 
     // get the Thermostat service if it exists, otherwise create a new LightBulb service
     // you can create multiple services for each accessory
+    // FIXME: Consider trying the HeaterCooler approach as well (maybe as a separate accessory?):
+    //        https://developers.homebridge.io/#/service/HeaterCooler
     this.service = this.accessory.getService(this.platform.Service.Thermostat) || this.accessory.addService(this.platform.Service.Thermostat)
+    // this.service = this.accessory.getService(this.platform.Service.HeaterCooler) || this.accessory.addService(this.platform.Service.HeaterCooler)
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
@@ -216,30 +231,40 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
       .onGet(this.handleTemperatureDisplayUnitsGet.bind(this))
       .onSet(this.handleTemperatureDisplayUnitsSet.bind(this))
 
+    // Register handlers for cooling threshold temperature
+    this.service.getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
+      .onGet(this.handleCoolingThresholdTemperatureGet.bind(this))
+      .onSet(this.handleCoolingThresholdTemperatureSet.bind(this))
+
+    // Register handlers for heating threshold temperature
+    this.service.getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
+      .onGet(this.handleHeatingThresholdTemperatureGet.bind(this))
+      .onSet(this.handleHeatingThresholdTemperatureSet.bind(this))
+
     // Register handlers for rotatin speed
-    this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
-      .onGet(this.handleRotationSpeedGet.bind(this))
-      .onSet(this.handleRotationSpeedSet.bind(this))
+    // this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
+    //   .onGet(this.handleRotationSpeedGet.bind(this))
+    //   .onSet(this.handleRotationSpeedSet.bind(this))
 
     // Register handlers for current horizontal tilt angle
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentHorizontalTiltAngle)
-      .onGet(this.handleCurrentHorizontalTiltAngleGet.bind(this))
-      .onSet(this.handleCurrentHorizontalTiltAngleSet.bind(this))
+    // this.service.getCharacteristic(this.platform.Characteristic.CurrentHorizontalTiltAngle)
+    //   .onGet(this.handleCurrentHorizontalTiltAngleGet.bind(this))
+    //   .onSet(this.handleCurrentHorizontalTiltAngleSet.bind(this))
 
     // Register handlers for target horizontal tilt angle
-    this.service.getCharacteristic(this.platform.Characteristic.TargetHorizontalTiltAngle)
-      .onGet(this.handleTargetHorizontalTiltAngleGet.bind(this))
-      .onSet(this.handleTargetHorizontalTiltAngleSet.bind(this))
+    // this.service.getCharacteristic(this.platform.Characteristic.TargetHorizontalTiltAngle)
+    //   .onGet(this.handleTargetHorizontalTiltAngleGet.bind(this))
+    //   .onSet(this.handleTargetHorizontalTiltAngleSet.bind(this))
 
     // Register handlers for current vertical tilt angle
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentVerticalTiltAngle)
-      .onGet(this.handleCurrentVerticalTiltAngleGet.bind(this))
-      .onSet(this.handleCurrentVerticalTiltAngleSet.bind(this))
+    // this.service.getCharacteristic(this.platform.Characteristic.CurrentVerticalTiltAngle)
+    //   .onGet(this.handleCurrentVerticalTiltAngleGet.bind(this))
+    //   .onSet(this.handleCurrentVerticalTiltAngleSet.bind(this))
 
     // Register handlers for target vertical tilt angle
-    this.service.getCharacteristic(this.platform.Characteristic.TargetVerticalTiltAngle)
-      .onGet(this.handleTargetVerticalTiltAngleGet.bind(this))
-      .onSet(this.handleTargetVerticalTiltAngleSet.bind(this))
+    // this.service.getCharacteristic(this.platform.Characteristic.TargetVerticalTiltAngle)
+    //   .onGet(this.handleTargetVerticalTiltAngleGet.bind(this))
+    //   .onSet(this.handleTargetVerticalTiltAngleSet.bind(this))
   }
 
   /**
@@ -281,12 +306,13 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   handleCurrentTemperatureGet(): number {
     this.log.debug('Triggered GET CurrentTemperature')
 
-    const currentValue = this.currentTemperature
+    const minCurrentTemperature = -270
+    const maxCurrentTemperature = 100
+    const currentValue = Math.min(maxCurrentTemperature, Math.max(minCurrentTemperature, this.currentTemperature))
 
     this.log.debug('Returning CurrentTemperature with value:', currentValue)
     return currentValue
   }
-
 
   /**
    * Handle requests to get the current value of the "Target Temperature" characteristic
@@ -294,7 +320,9 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   handleTargetTemperatureGet(): number {
     this.log.debug('Triggered GET TargetTemperature')
 
-    const currentValue = this.targetTemperature
+    const minTargetTemperature = 10
+    const maxTargetTemperature = 38
+    const currentValue = Math.min(maxTargetTemperature, Math.max(minTargetTemperature, this.targetTemperature))
 
     this.log.debug('Returning TargetTemperature with value:', currentValue)
     return currentValue
@@ -306,7 +334,11 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   handleTargetTemperatureSet(value: CharacteristicValue): void {
     this.log.debug('Triggered SET TargetTemperature:', value)
 
-    this.targetTemperature = value as number
+    const minCurrentTemperature = 10
+    const maxCurrentTemperature = 38
+    const currentValue = Math.min(maxCurrentTemperature, Math.max(minCurrentTemperature, value as number))
+
+    this.targetTemperature = currentValue
   }
 
   /**
@@ -327,113 +359,167 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   handleTemperatureDisplayUnitsSet(value: CharacteristicValue): void {
     this.log.debug('Triggered SET TemperatureDisplayUnits:', value)
 
-    this.temperatureDisplayUnits = value as number
+    this.temperatureDisplayUnits = Math.min(1, Math.max(0, value as number))
   }
 
   /**
-   * Handle requests to get the current value of the "Rotation Speed" characteristic
+   * Handle requests to get the current value of the "Cooling Threshold Temperature" characteristic
    */
-  handleRotationSpeedGet(): number {
-    this.log.debug('Triggered GET RotationSpeed')
+  handleCoolingThresholdTemperatureGet(): number {
+    this.log.debug('Triggered GET CoolingThresholdTemperature')
 
-    const currentValue = this.rotationSpeed
+    const minCoolingThresholdTemperature = 10
+    const maxCoolingThresholdTemperature = 35
+    const currentValue = Math.min(maxCoolingThresholdTemperature, Math.max(minCoolingThresholdTemperature, this.coolingThresholdTemperature))
 
-    this.log.debug('Returning RotationSpeed with value:', currentValue)
+    this.log.debug('Returning CoolingThresholdTemperature with value:', currentValue)
     return currentValue
   }
 
   /**
-   * Handle requests to set the "Rotation Speed" characteristic
+   * Handle requests to set the "Cooling Threshold Temperature" characteristic
    */
-  handleRotationSpeedSet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET RotationSpeed:', value)
+  handleCoolingThresholdTemperatureSet(value: CharacteristicValue): void {
+    this.log.debug('Triggered SET CoolingThresholdTemperature:', value)
 
-    this.rotationSpeed = value as number
+    const minCoolingThresholdTemperature = 10
+    const maxCoolingThresholdTemperature = 35
+    const currentValue = Math.min(maxCoolingThresholdTemperature, Math.max(minCoolingThresholdTemperature, value as number))
+
+    this.coolingThresholdTemperature = currentValue
   }
 
   /**
-   * Handle requests to get the current value of the "Current Horizontal Tilt Angle" characteristic
+   * Handle requests to get the current value of the "Heating Threshold Temperature" characteristic
    */
-  handleCurrentHorizontalTiltAngleGet(): number {
-    this.log.debug('Triggered GET CurrentHorizontalTiltAngle')
+  handleHeatingThresholdTemperatureGet(): number {
+    this.log.debug('Triggered GET HeatingThresholdTemperature')
 
-    const currentValue = this.currentHorizontalTiltAngle
+    const minHeatingThresholdTemperature = 0
+    const maxHeatingThresholdTemperature = 25
+    const currentValue = Math.min(maxHeatingThresholdTemperature, Math.max(minHeatingThresholdTemperature, this.heatingThresholdTemperature))
 
-    this.log.debug('Returning CurrentHorizontalTiltAngle with value:', currentValue)
+    this.log.debug('Returning HeatingThresholdTemperature with value:', currentValue)
     return currentValue
   }
 
   /**
-   * Handle requests to set the "Current Horizontal Tilt Angle" characteristic
+   * Handle requests to set the "Heating Threshold Temperature" characteristic
    */
-  handleCurrentHorizontalTiltAngleSet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET CurrentHorizontalTiltAngle:', value)
+  handleHeatingThresholdTemperatureSet(value: CharacteristicValue): void {
+    this.log.debug('Triggered SET HeatingThresholdTemperature:', value)
 
-    this.currentHorizontalTiltAngle = value as number
+    const minHeatingThresholdTemperature = 0
+    const maxHeatingThresholdTemperature = 25
+    const currentValue = Math.min(maxHeatingThresholdTemperature, Math.max(minHeatingThresholdTemperature, value as number))
+
+    this.heatingThresholdTemperature = currentValue
   }
 
-  /**
-   * Handle requests to get the current value of the "Target Horizontal Tilt Angle" characteristic
-   */
-  handleTargetHorizontalTiltAngleGet(): number {
-    this.log.debug('Triggered GET TargetHorizontalTiltAngle')
+  // /**
+  //  * Handle requests to get the current value of the "Rotation Speed" characteristic
+  //  */
+  // handleRotationSpeedGet(): number {
+  //   this.log.debug('Triggered GET RotationSpeed')
 
-    const currentValue = this.targetHorizontalTiltAngle
+  //   const currentValue = this.rotationSpeed
 
-    this.log.debug('Returning TargetHorizontalTiltAngle with value:', currentValue)
-    return currentValue
-  }
+  //   this.log.debug('Returning RotationSpeed with value:', currentValue)
+  //   return currentValue
+  // }
 
-  /**
-   * Handle requests to set the "Target Horizontal Tilt Angle" characteristic
-   */
-  handleTargetHorizontalTiltAngleSet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET TargetHorizontalTiltAngle:', value)
+  // /**
+  //  * Handle requests to set the "Rotation Speed" characteristic
+  //  */
+  // handleRotationSpeedSet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET RotationSpeed:', value)
 
-    this.targetHorizontalTiltAngle = value as number
-  }
+  //   this.rotationSpeed = value as number
+  // }
 
-  /**
-   * Handle requests to get the current value of the "Current Vertical Tilt Angle" characteristic
-   */
-  handleCurrentVerticalTiltAngleGet(): number {
-    this.log.debug('Triggered GET CurrentVerticalTiltAngle')
+  // /**
+  //  * Handle requests to get the current value of the "Current Horizontal Tilt Angle" characteristic
+  //  */
+  // handleCurrentHorizontalTiltAngleGet(): number {
+  //   this.log.debug('Triggered GET CurrentHorizontalTiltAngle')
 
-    const currentValue = this.currentVerticalTiltAngle
+  //   const currentValue = this.currentHorizontalTiltAngle
 
-    this.log.debug('Returning CurrentVerticalTiltAngle with value:', currentValue)
-    return currentValue
-  }
+  //   this.log.debug('Returning CurrentHorizontalTiltAngle with value:', currentValue)
+  //   return currentValue
+  // }
 
-  /**
-   * Handle requests to set the "Current Vertical Tilt Angle" characteristic
-   */
-  handleCurrentVerticalTiltAngleSet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET CurrentVerticalTiltAngle:', value)
+  // /**
+  //  * Handle requests to set the "Current Horizontal Tilt Angle" characteristic
+  //  */
+  // handleCurrentHorizontalTiltAngleSet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET CurrentHorizontalTiltAngle:', value)
 
-    this.currentVerticalTiltAngle = value as number
-  }
+  //   this.currentHorizontalTiltAngle = value as number
+  // }
 
-  /**
-   * Handle requests to get the current value of the "Target Vertical Tilt Angle" characteristic
-   */
-  handleTargetVerticalTiltAngleGet(): number {
-    this.log.debug('Triggered GET TargetVerticalTiltAngle')
+  // /**
+  //  * Handle requests to get the current value of the "Target Horizontal Tilt Angle" characteristic
+  //  */
+  // handleTargetHorizontalTiltAngleGet(): number {
+  //   this.log.debug('Triggered GET TargetHorizontalTiltAngle')
 
-    const currentValue = this.targetVerticalTiltAngle
+  //   const currentValue = this.targetHorizontalTiltAngle
 
-    this.log.debug('Returning TargetVerticalTiltAngle with value:', currentValue)
-    return currentValue
-  }
+  //   this.log.debug('Returning TargetHorizontalTiltAngle with value:', currentValue)
+  //   return currentValue
+  // }
 
-  /**
-   * Handle requests to set the "Target Vertical Tilt Angle" characteristic
-   */
-  handleTargetVerticalTiltAngleSet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET TargetVerticalTiltAngle:', value)
+  // /**
+  //  * Handle requests to set the "Target Horizontal Tilt Angle" characteristic
+  //  */
+  // handleTargetHorizontalTiltAngleSet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET TargetHorizontalTiltAngle:', value)
 
-    this.targetVerticalTiltAngle = value as number
-  }
+  //   this.targetHorizontalTiltAngle = value as number
+  // }
+
+  // /**
+  //  * Handle requests to get the current value of the "Current Vertical Tilt Angle" characteristic
+  //  */
+  // handleCurrentVerticalTiltAngleGet(): number {
+  //   this.log.debug('Triggered GET CurrentVerticalTiltAngle')
+
+  //   const currentValue = this.currentVerticalTiltAngle
+
+  //   this.log.debug('Returning CurrentVerticalTiltAngle with value:', currentValue)
+  //   return currentValue
+  // }
+
+  // /**
+  //  * Handle requests to set the "Current Vertical Tilt Angle" characteristic
+  //  */
+  // handleCurrentVerticalTiltAngleSet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET CurrentVerticalTiltAngle:', value)
+
+  //   this.currentVerticalTiltAngle = value as number
+  // }
+
+  // /**
+  //  * Handle requests to get the current value of the "Target Vertical Tilt Angle" characteristic
+  //  */
+  // handleTargetVerticalTiltAngleGet(): number {
+  //   this.log.debug('Triggered GET TargetVerticalTiltAngle')
+
+  //   const currentValue = this.targetVerticalTiltAngle
+
+  //   this.log.debug('Returning TargetVerticalTiltAngle with value:', currentValue)
+  //   return currentValue
+  // }
+
+  // /**
+  //  * Handle requests to set the "Target Vertical Tilt Angle" characteristic
+  //  */
+  // handleTargetVerticalTiltAngleSet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET TargetVerticalTiltAngle:', value)
+
+  //   this.targetVerticalTiltAngle = value as number
+  // }
 
   // constructor(log: Logging, config: AccessoryConfig | IMELCloudAccessoryConfig, api: API) {
   //   // Store a reference to the logger
