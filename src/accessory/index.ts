@@ -18,16 +18,16 @@ import {
   Categories,
   UnknownContext
 } from 'homebridge'
-import {
-  CurrentHeatingCoolingState,
-  TargetHeatingCoolingState,
-  TemperatureDisplayUnits,
-  RotationSpeed,
-  CurrentHorizontalTiltAngle,
-  TargetHorizontalTiltAngle,
-  CurrentVerticalTiltAngle,
-  TargetVerticalTiltAngle
-} from 'hap-nodejs/dist/lib/definitions/CharacteristicDefinitions'
+// import {
+//   CurrentHeatingCoolingState,
+//   TargetHeatingCoolingState,
+//   TemperatureDisplayUnits,
+//   RotationSpeed,
+//   CurrentHorizontalTiltAngle,
+//   TargetHorizontalTiltAngle,
+//   CurrentVerticalTiltAngle,
+//   TargetVerticalTiltAngle
+// } from 'hap-nodejs/dist/lib/definitions/CharacteristicDefinitions'
 // import { IMELCloudAccessoryConfig, validateMELCloudAccessoryConfig } from '../config'
 import { IMELCloudPlatform } from '../platform'
 import { IDevice } from '../api/client'
@@ -156,11 +156,11 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     this.accessory = accessory
 
     // initialize accessory state
-    this.currentHeatingCoolingState = CurrentHeatingCoolingState.OFF
-    this.targetHeatingCoolingState = TargetHeatingCoolingState.OFF
+    this.currentHeatingCoolingState = this.api.hap.Characteristic.CurrentHeatingCoolingState.OFF
+    this.targetHeatingCoolingState = this.api.hap.Characteristic.TargetHeatingCoolingState.OFF
     this.currentTemperature = 0
     this.targetTemperature = 0
-    this.temperatureDisplayUnits = TemperatureDisplayUnits.CELSIUS
+    this.temperatureDisplayUnits = this.api.hap.Characteristic.TemperatureDisplayUnits.CELSIUS
     this.rotationSpeed = 0
     this.currentHorizontalTiltAngle = 0
     this.targetHorizontalTiltAngle = 0
