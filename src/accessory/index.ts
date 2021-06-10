@@ -30,8 +30,7 @@ import {
 // } from 'hap-nodejs/dist/lib/definitions/CharacteristicDefinitions'
 // import { IMELCloudAccessoryConfig, validateMELCloudAccessoryConfig } from '../config'
 import { IMELCloudPlatform } from '../platform'
-import { IDevice } from '../api/client'
-import { Accessory } from 'hap-nodejs'
+import { IDevice, IDeviceGet } from '../api/client'
 
 export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   readonly service: Service
@@ -46,10 +45,10 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   currentTemperature: number
   targetTemperature: number
   temperatureDisplayUnits: number
-  currentRelativeHumidity: number
-  targetRelativeHumidity: number
-  coolingThresholdTemperature: number
-  heatingThresholdTemperature: number
+  // currentRelativeHumidity: number
+  // targetRelativeHumidity: number
+  // coolingThresholdTemperature: number
+  // heatingThresholdTemperature: number
   // rotationSpeed: number
   // swingMode: number
   // currentHorizontalTiltAngle: number
@@ -57,26 +56,26 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   // currentVerticalTiltAngle: number
   // targetVerticalTiltAngle: number
 
-  handleCurrentHeatingCoolingStateGet(): number
-  handleTargetHeatingCoolingStateGet(): number
+  handleCurrentHeatingCoolingStateGet(): Promise<number>
+  handleTargetHeatingCoolingStateGet(): Promise<number>
   handleTargetHeatingCoolingStateSet(value: CharacteristicValue): void
 
-  handleCurrentTemperatureGet(): number
-  handleTargetTemperatureGet(): number
+  handleCurrentTemperatureGet(): Promise<number>
+  handleTargetTemperatureGet(): Promise<number>
   handleTargetTemperatureSet(value: CharacteristicValue): void
 
-  handleTemperatureDisplayUnitsGet(): number
+  handleTemperatureDisplayUnitsGet(): Promise<number>
   handleTemperatureDisplayUnitsSet(value: CharacteristicValue): void
 
-  handleCurrentRelativeHumidityGet(): number
-  handleTargetRelativeHumidityGet(): number
-  handleTargetRelativeHumiditySet(value: CharacteristicValue): void
+  // handleCurrentRelativeHumidityGet(): number
+  // handleTargetRelativeHumidityGet(): number
+  // handleTargetRelativeHumiditySet(value: CharacteristicValue): void
 
-  handleCoolingThresholdTemperatureGet(): number
-  handleCoolingThresholdTemperatureSet(value: CharacteristicValue): void
+  // handleCoolingThresholdTemperatureGet(): number
+  // handleCoolingThresholdTemperatureSet(value: CharacteristicValue): void
 
-  handleHeatingThresholdTemperatureGet(): number
-  handleHeatingThresholdTemperatureSet(value: CharacteristicValue): void
+  // handleHeatingThresholdTemperatureGet(): number
+  // handleHeatingThresholdTemperatureSet(value: CharacteristicValue): void
 
   // handleRotationSpeedGet(): number
   // handleRotationSpeedSet(value: CharacteristicValue): void
@@ -92,6 +91,9 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
 
   // handleTargetVerticalTiltAngleGet(): number
   // handleTargetVerticalTiltAngleSet(value: CharacteristicValue): void
+
+  updateDeviceInfo(): Promise<void>
+  getDeviceInfo(): Promise<IDeviceGet>
 
   // readonly log: Logging
   // readonly config: IMELCloudAccessoryConfig
@@ -134,10 +136,13 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   public currentTemperature: number
   public targetTemperature: number
   public temperatureDisplayUnits: number
-  public currentRelativeHumidity: number
-  public targetRelativeHumidity: number
-  public coolingThresholdTemperature: number
-  public heatingThresholdTemperature: number
+
+  // TODO: These aren't included in the API response, so humidity is probably not supported?
+  // public currentRelativeHumidity: number
+  // public targetRelativeHumidity: number
+  // public coolingThresholdTemperature: number
+  // public heatingThresholdTemperature: number
+
   // public rotationSpeed: number
   // public currentHorizontalTiltAngle: number
   // public targetHorizontalTiltAngle: number
@@ -174,21 +179,18 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     }
     this.accessory = accessory
 
+    // FIXME: Load these from storage? Or wait for client update to set them instead?
     // initialize accessory state
     this.currentHeatingCoolingState = this.api.hap.Characteristic.CurrentHeatingCoolingState.OFF
     this.targetHeatingCoolingState = this.api.hap.Characteristic.TargetHeatingCoolingState.OFF
     this.currentTemperature = -270
     this.targetTemperature = 10
     this.temperatureDisplayUnits = this.api.hap.Characteristic.TemperatureDisplayUnits.CELSIUS
-    this.currentRelativeHumidity = 0
-    this.targetRelativeHumidity = 0
-    this.coolingThresholdTemperature = 10
-    this.heatingThresholdTemperature = 0
-    // this.rotationSpeed = 0
-    // this.currentHorizontalTiltAngle = 0
-    // this.targetHorizontalTiltAngle = 0
-    // this.currentVerticalTiltAngle = 0
-    // this.targetVerticalTiltAngle = 0
+    this.updateDeviceInfo()
+      .catch(err => {
+        this.log.error('Failed to update device info, reverting to default values:', err)
+      })
+
 
     // set accessory information
     const device = accessory.context.device as IDevice
@@ -243,14 +245,14 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
       .onSet(this.handleTemperatureDisplayUnitsSet.bind(this))
 
     // Register handlers for cooling threshold temperature
-    this.service.getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
-      .onGet(this.handleCoolingThresholdTemperatureGet.bind(this))
-      .onSet(this.handleCoolingThresholdTemperatureSet.bind(this))
+    // this.service.getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
+    //   .onGet(this.handleCoolingThresholdTemperatureGet.bind(this))
+    //   .onSet(this.handleCoolingThresholdTemperatureSet.bind(this))
 
     // Register handlers for heating threshold temperature
-    this.service.getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
-      .onGet(this.handleHeatingThresholdTemperatureGet.bind(this))
-      .onSet(this.handleHeatingThresholdTemperatureSet.bind(this))
+    // this.service.getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
+    //   .onGet(this.handleHeatingThresholdTemperatureGet.bind(this))
+    //   .onSet(this.handleHeatingThresholdTemperatureSet.bind(this))
 
     // Register handlers for rotatin speed
     // this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
@@ -281,8 +283,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to get the current value of the "Current Heating Cooling State" characteristic
    */
-  handleCurrentHeatingCoolingStateGet(): number {
+  async handleCurrentHeatingCoolingStateGet(): Promise<number> {
     this.log.debug('Triggered GET CurrentHeatingCoolingState')
+
+    // FIXME: This shouldn't be done with every GET request! Or wait, should it?
+    // Update device info
+    await this.updateDeviceInfo()
 
     const currentValue = this.currentHeatingCoolingState
 
@@ -293,8 +299,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to get the current value of the "Target Heating Cooling State" characteristic
    */
-  handleTargetHeatingCoolingStateGet(): number {
+  async handleTargetHeatingCoolingStateGet(): Promise<number> {
     this.log.debug('Triggered GET TargetHeatingCoolingState')
+
+    // FIXME: This shouldn't be done with every GET request! Or wait, should it?
+    // Update device info
+    await this.updateDeviceInfo()
 
     const currentValue = this.targetHeatingCoolingState
 
@@ -314,8 +324,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to get the current value of the "Current Temperature" characteristic
    */
-  handleCurrentTemperatureGet(): number {
+  async handleCurrentTemperatureGet(): Promise<number> {
     this.log.debug('Triggered GET CurrentTemperature')
+
+    // FIXME: This shouldn't be done with every GET request! Or wait, should it?
+    // Update device info
+    await this.updateDeviceInfo()
 
     const minCurrentTemperature = -270
     const maxCurrentTemperature = 100
@@ -328,8 +342,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to get the current value of the "Target Temperature" characteristic
    */
-  handleTargetTemperatureGet(): number {
+  async handleTargetTemperatureGet(): Promise<number> {
     this.log.debug('Triggered GET TargetTemperature')
+
+    // FIXME: This shouldn't be done with every GET request! Or wait, should it?
+    // Update device info
+    await this.updateDeviceInfo()
 
     const minTargetTemperature = 10
     const maxTargetTemperature = 38
@@ -355,8 +373,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to get the current value of the "Temperature Display Units" characteristic
    */
-  handleTemperatureDisplayUnitsGet(): number {
+  async handleTemperatureDisplayUnitsGet(): Promise<number> {
     this.log.debug('Triggered GET TemperatureDisplayUnits')
+
+    // FIXME: This shouldn't be done with every GET request! Or wait, should it?
+    // Update device info
+    await this.updateDeviceInfo()
 
     const currentValue = this.temperatureDisplayUnits
 
@@ -373,100 +395,100 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     this.temperatureDisplayUnits = Math.min(1, Math.max(0, value as number))
   }
 
-  /**
-   * Handle requests to get the current value of the "Current Relative Humidity" characteristic
-   */
-  handleCurrentRelativeHumidityGet(): number {
-    this.log.debug('Triggered GET CurrentRelativeHumidity')
+  // /**
+  //  * Handle requests to get the current value of the "Current Relative Humidity" characteristic
+  //  */
+  // handleCurrentRelativeHumidityGet(): number {
+  //   this.log.debug('Triggered GET CurrentRelativeHumidity')
 
-    const minCurrentRelativeHumidity = 0
-    const maxCurrentRelativeHumidity = 100
-    const currentValue = Math.min(maxCurrentRelativeHumidity, Math.max(minCurrentRelativeHumidity, this.currentRelativeHumidity))
+  //   const minCurrentRelativeHumidity = 0
+  //   const maxCurrentRelativeHumidity = 100
+  //   const currentValue = Math.min(maxCurrentRelativeHumidity, Math.max(minCurrentRelativeHumidity, this.currentRelativeHumidity))
 
-    this.log.debug('Returning CurrentRelativeHumidity with value:', currentValue)
-    return currentValue
-  }
+  //   this.log.debug('Returning CurrentRelativeHumidity with value:', currentValue)
+  //   return currentValue
+  // }
 
-  /**
-   * Handle requests to get the current value of the "Target Relative Humidity" characteristic
-   */
-  handleTargetRelativeHumidityGet(): number {
-    this.log.debug('Triggered GET TargetRelativeHumidity')
+  // /**
+  //  * Handle requests to get the current value of the "Target Relative Humidity" characteristic
+  //  */
+  // handleTargetRelativeHumidityGet(): number {
+  //   this.log.debug('Triggered GET TargetRelativeHumidity')
 
-    const minTargetRelativeHumidity = 0
-    const maxTargetRelativeHumidity = 100
-    const currentValue = Math.min(maxTargetRelativeHumidity, Math.max(minTargetRelativeHumidity, this.targetRelativeHumidity))
+  //   const minTargetRelativeHumidity = 0
+  //   const maxTargetRelativeHumidity = 100
+  //   const currentValue = Math.min(maxTargetRelativeHumidity, Math.max(minTargetRelativeHumidity, this.targetRelativeHumidity))
 
-    this.log.debug('Returning TargetRelativeHumidity with value:', currentValue)
-    return currentValue
-  }
+  //   this.log.debug('Returning TargetRelativeHumidity with value:', currentValue)
+  //   return currentValue
+  // }
 
-  /**
-   * Handle requests to set the "Target Relative Humidity" characteristic
-   */
-  handleTargetRelativeHumiditySet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET TargetRelativeHumidity:', value)
+  // /**
+  //  * Handle requests to set the "Target Relative Humidity" characteristic
+  //  */
+  // handleTargetRelativeHumiditySet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET TargetRelativeHumidity:', value)
 
-    const minTargetRelativeHumidity = 0
-    const maxTargetRelativeHumidity = 100
-    const currentValue = Math.min(maxTargetRelativeHumidity, Math.max(minTargetRelativeHumidity, value as number))
+  //   const minTargetRelativeHumidity = 0
+  //   const maxTargetRelativeHumidity = 100
+  //   const currentValue = Math.min(maxTargetRelativeHumidity, Math.max(minTargetRelativeHumidity, value as number))
 
-    this.targetRelativeHumidity = currentValue
-  }
+  //   this.targetRelativeHumidity = currentValue
+  // }
 
-  /**
-   * Handle requests to get the current value of the "Cooling Threshold Temperature" characteristic
-   */
-  handleCoolingThresholdTemperatureGet(): number {
-    this.log.debug('Triggered GET CoolingThresholdTemperature')
+  // /**
+  //  * Handle requests to get the current value of the "Cooling Threshold Temperature" characteristic
+  //  */
+  // handleCoolingThresholdTemperatureGet(): number {
+  //   this.log.debug('Triggered GET CoolingThresholdTemperature')
 
-    const minCoolingThresholdTemperature = 10
-    const maxCoolingThresholdTemperature = 35
-    const currentValue = Math.min(maxCoolingThresholdTemperature, Math.max(minCoolingThresholdTemperature, this.coolingThresholdTemperature))
+  //   const minCoolingThresholdTemperature = 10
+  //   const maxCoolingThresholdTemperature = 35
+  //   const currentValue = Math.min(maxCoolingThresholdTemperature, Math.max(minCoolingThresholdTemperature, this.coolingThresholdTemperature))
 
-    this.log.debug('Returning CoolingThresholdTemperature with value:', currentValue)
-    return currentValue
-  }
+  //   this.log.debug('Returning CoolingThresholdTemperature with value:', currentValue)
+  //   return currentValue
+  // }
 
-  /**
-   * Handle requests to set the "Cooling Threshold Temperature" characteristic
-   */
-  handleCoolingThresholdTemperatureSet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET CoolingThresholdTemperature:', value)
+  // /**
+  //  * Handle requests to set the "Cooling Threshold Temperature" characteristic
+  //  */
+  // handleCoolingThresholdTemperatureSet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET CoolingThresholdTemperature:', value)
 
-    const minCoolingThresholdTemperature = 10
-    const maxCoolingThresholdTemperature = 35
-    const currentValue = Math.min(maxCoolingThresholdTemperature, Math.max(minCoolingThresholdTemperature, value as number))
+  //   const minCoolingThresholdTemperature = 10
+  //   const maxCoolingThresholdTemperature = 35
+  //   const currentValue = Math.min(maxCoolingThresholdTemperature, Math.max(minCoolingThresholdTemperature, value as number))
 
-    this.coolingThresholdTemperature = currentValue
-  }
+  //   this.coolingThresholdTemperature = currentValue
+  // }
 
-  /**
-   * Handle requests to get the current value of the "Heating Threshold Temperature" characteristic
-   */
-  handleHeatingThresholdTemperatureGet(): number {
-    this.log.debug('Triggered GET HeatingThresholdTemperature')
+  // /**
+  //  * Handle requests to get the current value of the "Heating Threshold Temperature" characteristic
+  //  */
+  // handleHeatingThresholdTemperatureGet(): number {
+  //   this.log.debug('Triggered GET HeatingThresholdTemperature')
 
-    const minHeatingThresholdTemperature = 0
-    const maxHeatingThresholdTemperature = 25
-    const currentValue = Math.min(maxHeatingThresholdTemperature, Math.max(minHeatingThresholdTemperature, this.heatingThresholdTemperature))
+  //   const minHeatingThresholdTemperature = 0
+  //   const maxHeatingThresholdTemperature = 25
+  //   const currentValue = Math.min(maxHeatingThresholdTemperature, Math.max(minHeatingThresholdTemperature, this.heatingThresholdTemperature))
 
-    this.log.debug('Returning HeatingThresholdTemperature with value:', currentValue)
-    return currentValue
-  }
+  //   this.log.debug('Returning HeatingThresholdTemperature with value:', currentValue)
+  //   return currentValue
+  // }
 
-  /**
-   * Handle requests to set the "Heating Threshold Temperature" characteristic
-   */
-  handleHeatingThresholdTemperatureSet(value: CharacteristicValue): void {
-    this.log.debug('Triggered SET HeatingThresholdTemperature:', value)
+  // /**
+  //  * Handle requests to set the "Heating Threshold Temperature" characteristic
+  //  */
+  // handleHeatingThresholdTemperatureSet(value: CharacteristicValue): void {
+  //   this.log.debug('Triggered SET HeatingThresholdTemperature:', value)
 
-    const minHeatingThresholdTemperature = 0
-    const maxHeatingThresholdTemperature = 25
-    const currentValue = Math.min(maxHeatingThresholdTemperature, Math.max(minHeatingThresholdTemperature, value as number))
+  //   const minHeatingThresholdTemperature = 0
+  //   const maxHeatingThresholdTemperature = 25
+  //   const currentValue = Math.min(maxHeatingThresholdTemperature, Math.max(minHeatingThresholdTemperature, value as number))
 
-    this.heatingThresholdTemperature = currentValue
-  }
+  //   this.heatingThresholdTemperature = currentValue
+  // }
 
   // /**
   //  * Handle requests to get the current value of the "Rotation Speed" characteristic
@@ -572,6 +594,88 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
 
   //   this.targetVerticalTiltAngle = value as number
   // }
+
+  async updateDeviceInfo(): Promise<void> {
+    const deviceInfo = await this.getDeviceInfo()
+
+    const CurrentHeatingCoolingState = this.api.hap.Characteristic.CurrentHeatingCoolingState
+    const TargetHeatingCoolingState = this.api.hap.Characteristic.TargetHeatingCoolingState
+    const TemperatureDisplayUnits = this.api.hap.Characteristic.TemperatureDisplayUnits
+
+    // Update current heating cooling state
+    if (deviceInfo.Power != null) {
+      if (deviceInfo.Power) {
+        this.currentHeatingCoolingState = CurrentHeatingCoolingState.OFF
+      } else {
+        switch (deviceInfo.OperationMode) {
+          case 1:
+            this.currentHeatingCoolingState = CurrentHeatingCoolingState.HEAT
+            break
+          case 3:
+            this.currentHeatingCoolingState = CurrentHeatingCoolingState.COOL
+            break
+
+          default:
+            // MELCloud can return also 2 (dehumidify), 7 (Ventilation) and 8 (auto)
+            // We return 5 which is undefined in HomeKit
+            this.currentHeatingCoolingState = 5
+            break
+        }
+      }
+    }
+
+    // Update target heating cooling state
+    if (deviceInfo.Power != null) {
+      if (deviceInfo.Power) {
+        this.currentHeatingCoolingState = TargetHeatingCoolingState.OFF
+      } else {
+        switch (deviceInfo.OperationMode) {
+          case 1:
+            this.targetHeatingCoolingState = TargetHeatingCoolingState.HEAT
+            break
+          case 3:
+            this.targetHeatingCoolingState = TargetHeatingCoolingState.COOL
+            break
+          case 8:
+            this.targetHeatingCoolingState = TargetHeatingCoolingState.AUTO
+            break
+
+          default:
+            // MELCloud can return also 2 (dehumidify), 7 (Ventilation) and 8 (auto)
+            // We return 5 which is undefined in HomeKit
+            this.targetHeatingCoolingState = 5
+            break
+        }
+      }
+    }
+
+    // Update current temperature
+    if (deviceInfo.RoomTemperature) {
+      this.currentTemperature = deviceInfo.RoomTemperature
+    }
+
+    // Update target temperature
+    if (deviceInfo.SetTemperature) {
+      this.targetTemperature = deviceInfo.SetTemperature
+    }
+
+    // Update temperature display units
+    if (this.platform.client.UseFahrenheit) {
+      this.temperatureDisplayUnits = this.platform.client.UseFahrenheit ? TemperatureDisplayUnits.FAHRENHEIT : TemperatureDisplayUnits.CELSIUS
+    }
+
+    // TODO: Set rotation speed, tilt angle etc. (only necessary for HeaterCooler, not Thermostat, right?)
+    //       Reference: https://github.com/ilcato/homebridge-melcloud/blob/89a7e46247caead0a208302c206c0146d32cddf7/index.js#L207
+
+    // TODO: What about Current/Target Relative Humidity and Cooling/Heating Threshold Temperature
+
+    // TODO: What about DefaultHeatingSetTemperature/DefaultCoolingSetTemperature in the API response?
+  }
+
+  async getDeviceInfo(): Promise<IDeviceGet> {
+    const device: IDevice = this.accessory.context.device
+    return this.platform.client.getDevice(device.DeviceName, device.BuildingID)
+  }
 
   // constructor(log: Logging, config: AccessoryConfig | IMELCloudAccessoryConfig, api: API) {
   //   // Store a reference to the logger

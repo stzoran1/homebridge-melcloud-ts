@@ -28,13 +28,13 @@ export interface IMELCloudPlatform extends DynamicPlatformPlugin {
   readonly Service: typeof Service
   readonly Characteristic: typeof Characteristic
 
-  readonly accessories: Array<PlatformAccessory>
+  /*readonly*/ accessories: Array<PlatformAccessory>
 
   readonly client: IMELCloudAPIClient
 
   discoverDevices(): Promise<void>
-  getDevices(): Promise<Array<PlatformAccessory>>
-  createAccessories(building: IDeviceBuilding, devices: Array<IDevice> | null, foundAccessories: Array<PlatformAccessory>): void
+  getDevices(): Promise<void>
+  createAccessories(building: IDeviceBuilding, devices: Array<IDevice> | null): Promise<void>
 
   // TODO: Re-enable
   // UseFahrenheit: boolean
@@ -77,7 +77,7 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
   public readonly Service: typeof Service
   public readonly Characteristic: typeof Characteristic
 
-  public readonly accessories: Array<PlatformAccessory> = []
+  public /*readonly*/ accessories: Array<PlatformAccessory> = []
   // #endregion
 
   // #region MELCloudPlatform - Configuration
@@ -125,7 +125,7 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
     this.Characteristic = this.api.hap.Characteristic
 
     // Create a new MELCloud API client
-    this.client = new MELCloudAPIClient(this.log, this.config)
+    this.client = new MELCloudAPIClient(this.log, this.config, this.api.user.storagePath())
     if (!this.client) {
       throw new Error('Failed to create MELCloud API client')
     }
@@ -193,16 +193,12 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
   async discoverDevices(): Promise<void> {
     this.log.info('Discovering devices as accessories')
 
-    // Login to MELCloud
-    const loginResponse = await this.client.login()
-
+    // TODO: UPDATE: This is now a part of client.UseFahrenheit (FIXME: The value is ONLY updated on login though?!)
     // TODO: Set UseFahrenheit from loginResponse.UseFahrenheit
     // loginResponse.UseFahrenheit
 
-    // TODO: Validate login and add error handling?
-
-    // Get devices from MELCloud
-    const devices = await this.getDevices()
+    // Get devices from MELCloud and add them as HomeKit accessories
+    await this.getDevices()
 
     // TODO: Now just add all accessories to this.accessories and register them with Homebridge?
     //       But what about potential duplicates?!
@@ -273,68 +269,58 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
 
   // FIXME: This should re-use existing accessories and not always recreate them?!
   //        See here for an example: https://github.com/homebridge/homebridge-plugin-template/blob/master/src/platform.ts
-  async getDevices(): Promise<Array<PlatformAccessory>> {
-    return new Promise((resolve, reject) => {
-      this.log.debug('Getting devices..')
-      this.client.listDevices()
-        .then(response => {
-          // Prepare an array of accessories
-          const foundAccessories = [] as Array<PlatformAccessory>
+  async getDevices(): Promise<void> {
+    this.log.debug('Getting devices..')
+    return this.client.listDevices()
+      .then(response => {
+        // Prepare an array of accessories
+        // const foundAccessories = [] as Array<PlatformAccessory>
 
-          // Parse and loop through all buildings
-          for (const building of response) {
-            if (building) {
-              this.log.debug('Building:', building)
+        // Parse and loop through all buildings
+        for (const building of response) {
+          if (building) {
+            this.log.debug('Building:', building)
 
-              // (Re)create the accessories
-              if (building.Structure) {
-                this.createAccessories(building, building.Structure.Devices, foundAccessories)
+            // (Re)create the accessories
+            if (building.Structure) {
+              this.createAccessories(building, building.Structure.Devices)
 
-                // Parse and loop through all floors
-                if (building.Structure.Floors) {
-                  for (const floor of building.Structure.Floors) {
-                    this.log.debug('Floor:', floor)
+              // Parse and loop through all floors
+              if (building.Structure.Floors) {
+                for (const floor of building.Structure.Floors) {
+                  this.log.debug('Floor:', floor)
 
-                    // (Re)create the accessories
-                    this.createAccessories(building, floor.Devices, foundAccessories)
+                  // (Re)create the accessories
+                  this.createAccessories(building, floor.Devices)
 
-                    // Parse and loop through all floor areas
-                    if (floor.Areas) {
-                      for (const floorArea of floor.Areas) {
-                        this.log.debug('Floor area:', floorArea)
+                  // Parse and loop through all floor areas
+                  if (floor.Areas) {
+                    for (const floorArea of floor.Areas) {
+                      this.log.debug('Floor area:', floorArea)
 
-                        // (Re)create the accessories
-                        this.createAccessories(building, floorArea.Devices, foundAccessories)
-                      }
+                      // (Re)create the accessories
+                      this.createAccessories(building, floorArea.Devices)
                     }
                   }
                 }
+              }
 
-                // Parse and loop through all building areas
-                if (building.Structure.Areas) {
-                  for (const buildingArea of building.Structure.Areas) {
-                    this.log.debug('Building area:', buildingArea)
+              // Parse and loop through all building areas
+              if (building.Structure.Areas) {
+                for (const buildingArea of building.Structure.Areas) {
+                  this.log.debug('Building area:', buildingArea)
 
-                    // (Re)create the accessories
-                    this.createAccessories(building, buildingArea.Devices, foundAccessories)
-                  }
+                  // (Re)create the accessories
+                  this.createAccessories(building, buildingArea.Devices)
                 }
               }
             }
           }
-
-          // Return all found accessories
-          // return callback(foundAccessories)
-          // return foundAccessories
-          return resolve(foundAccessories)
-        })
-        .catch((err: Error) => {
-          return reject(err)
-        })
-    })
+        }
+      })
   }
 
-  createAccessories(building: IDeviceBuilding, devices: Array<IDevice> | null, foundAccessories: Array<PlatformAccessory>): void {
+  async createAccessories(building: IDeviceBuilding, devices: Array<IDevice> | null): Promise<void> {
     this.log.debug('Creating accessories..')
 
     // Loop through all MELCloud devices
@@ -351,21 +337,27 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
           const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid)
 
           if (existingAccessory) {
-          // the accessory already exists
+            // the accessory already exists
             this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
 
             // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
             // existingAccessory.context.device = device;
             // this.api.updatePlatformAccessories([existingAccessory]);
 
+            // TODO: Do we need to do this?
+            // Update existing accessory context
+            existingAccessory.context.device = device
+            existingAccessory.context.device.BuildingID = 
+            this.api.updatePlatformAccessories([existingAccessory])
+
             // create the accessory handler for the restored accessory
             // this is imported from `platformAccessory.ts`
             new MELCloudBridgedAccessory(this, existingAccessory)
 
-          // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
-          // remove platform accessories when no longer present
-          // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-          // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
+            // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
+            // remove platform accessories when no longer present
+            // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
+            // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
           } else if (device.DeviceName) {
             // the accessory does not yet exist, so we need to create it
             this.log.info('Adding new accessory:', device.DeviceName)

@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Logger } from 'homebridge'
+import { API, Logger } from 'homebridge'
 // import { Response, ResponseAsJSON } from 'request'
 import { IMELCloudConfig, MELCloudLanguage } from '../config'
 
 // import request from 'request-promise-native'
 import fetch from 'node-fetch'
 // import url from 'url'
+
+import * as storage from 'node-persist'
 
 const MELCLOUD_API_ROOT = 'https://app.melcloud.com/Mitsubishi.Wifi.Client'
 const MELCLOUD_API_LOGIN = 'Login/ClientLogin'
@@ -106,18 +108,53 @@ export interface IDevice {
 
 export interface IDeviceGet {
   // FIXME: Implement all the missing things!
-  EffectiveFlags: number
+  EffectiveFlags: number | null
+  LocalIPAddress: string | null
+  RoomTemperature: number | null
+  SetTemperature: number | null
+  SetFanSpeed: number | null
+  OperationMode: number | null
+  VaneHorizontal: number | null
+  VaneVertical: number | null
+  Name: string | null
+  NumberOfFanSpeeds: number | null
+  WeatherObservations: Array<unknown> | null
+  ErrorMessage: string | null
+  ErrorCode: number | null
+  DefaultHeatingSetTemperature: number | null
+  DefaultCoolingSetTemperature: number | null
+  HideVaneControls: boolean | null
+  HideDryModeControl: boolean | null
+  RoomTemperatureLabel: number | null
+  InStandbyMode: boolean | null
+  TemperatureIncrementOverride: number | null
+  ProhibitSetTemperature: boolean | null
+  ProhibitOperationMode: boolean | null
+  ProhibitPower: boolean | null
+  DeviceID: number | null
+  DeviceType: number | null
+  LastCommunication: string | null
+  NextCommunication: string | null
+  Power: boolean | null
+  HasPendingCommand: boolean | null
+  Offline: boolean | null
+  Scene: unknown | null
+  SceneOwner: unknown | null
 }
 
 export interface IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
+  StoragePath: string | null
   ContextKey: string | null
+  ContextKeyExpirationDate: Date | null
+  UseFahrenheit: boolean | null
+  isContextKeyValid: boolean
   get (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
   post (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
-  login (): Promise<ILoginData>
+  login (): Promise<ILoginData | null>
   listDevices (): Promise<Array<IDeviceBuilding>>
-  getDevice (deviceId: string, buildingId: string): Promise<IDeviceGet>
+  getDevice (deviceId: string | null, buildingId: number | null): Promise<IDeviceGet>
   updateOptions (useFahrenheit: boolean): Promise<unknown> // FIXME: Add proper type support
   setDeviceData (data: unknown): Promise<unknown> // FIXME: Add proper type support
 }
@@ -125,9 +162,30 @@ export interface IMELCloudAPIClient {
 export class MELCloudAPIClient implements IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
+  StoragePath: string | null
   ContextKey: string | null
+  ContextKeyExpirationDate: Date | null
+  UseFahrenheit: boolean | null
 
-  constructor(log: Logger, config: IMELCloudConfig) {
+  get isContextKeyValid(): boolean {
+    if (!this.ContextKey || this.ContextKey.length < 1) {
+      return false
+    }
+    if (!this.ContextKeyExpirationDate) {
+      return false
+    }
+    const nowDate = new Date()
+    nowDate.setHours(0)
+    nowDate.setMinutes(0)
+    nowDate.setSeconds(0)
+    nowDate.setMilliseconds(0)
+    if (this.ContextKeyExpirationDate <= nowDate) {
+      return false
+    }
+    return true
+  }
+
+  constructor(log: Logger, config: IMELCloudConfig, storagePath: string | null) {
     // Validate and store a reference to the logger
     if (!log) {
       throw new Error('Invalid or null Homebridge logger')
@@ -141,7 +199,23 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     this.config = config
 
     // MELCloud login token (or "context key")
+    this.StoragePath = storagePath
     this.ContextKey = null
+    this.ContextKeyExpirationDate = null
+    this.UseFahrenheit = null
+
+    // Initialize and load settings from storage
+    storage.init()
+      .then(async() => {
+        this.ContextKey = await storage.getItem('ContextKey') || null
+        this.log.debug('Loaded ContextKey from storage:', this.ContextKey)
+
+        this.ContextKeyExpirationDate = await storage.getItem('ContextKeyExpirationDate') || null
+        this.log.debug('Loaded ContextKeyExpirationDate from storage:', this.ContextKeyExpirationDate)
+
+        this.UseFahrenheit = await storage.getItem('UseFahrenheit') || null
+        this.log.debug('Loaded UseFahrenheit from storage:', this.UseFahrenheit)
+      })
   }
 
   async get(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any> {
@@ -211,8 +285,18 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
-  async login(): Promise<ILoginData> {
+  async login(): Promise<ILoginData | null> {
+    this.log.debug('Logging in')
+
     // this.log('LOGIN')
+    // Return immediately if the API key is still valid
+    if (this.isContextKeyValid) {
+      this.log.debug('ContextKey is still valid, skipping login')
+      return null
+    } else {
+      this.log.info('No login info found, attempting to log in')
+    }
+
     const response = await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LOGIN}`, {
       AppVersion: '1.19.0.8',
       CaptchaChallenge: '',
@@ -228,6 +312,17 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     this.log.info('login -> response:', JSON.stringify(response))
     if (response.LoginData) {
       this.ContextKey = response.LoginData.ContextKey
+      await storage.setItem('ContextKey', this.ContextKey)
+      if (response.LoginData.Expiry) {
+        this.ContextKeyExpirationDate = new Date(response.LoginData.Expiry)
+        this.ContextKeyExpirationDate.setHours(0)
+        this.ContextKeyExpirationDate.setMinutes(0)
+        this.ContextKeyExpirationDate.setSeconds(0)
+        this.ContextKeyExpirationDate.setMilliseconds(0)
+        await storage.setItem('ContextKeyExpirationDate', this.ContextKeyExpirationDate)
+      }
+      this.UseFahrenheit = response.LoginData.UseFahrenheit
+      await storage.setItem('UseFahrenheit', this.UseFahrenheit)
     } else {
       throw new Error(`Failed to login: failed to parse response: ${JSON.stringify(response)}`)
     }
@@ -254,6 +349,11 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
   }
 
   async listDevices(): Promise<Array<IDeviceBuilding>> {
+    this.log.debug('Getting list of devices')
+
+    // Check if we need to login first
+    await this.login()
+
     // this.log('LIST DEVICES')
     const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LIST_DEVICES}`, undefined, { 'X-MitsContextKey': this.ContextKey }) as Array<IDeviceBuilding>
     if (!response) {
@@ -272,7 +372,12 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
-  async getDevice(deviceId: string, buildingId: string): Promise<IDeviceGet> {
+  async getDevice(deviceId: string | null, buildingId: number | null): Promise<IDeviceGet> {
+    this.log.debug('Getting device with DeviceID', deviceId, 'and BuildingID', buildingId)
+
+    // Check if we need to login first
+    await this.login()
+
     // this.log('GET DEVICE', deviceId, buildingId)
     const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_GET_DEVICE}?id=${deviceId}&BuildingID=${buildingId}`, undefined, { 'X-MitsContextKey': this.ContextKey }) as IDeviceGet
     if (!response) {
@@ -294,8 +399,12 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
+  // FIXME: Actually call this and implement it!
   // TODO: Add proper type support
   async updateOptions(useFahrenheit: boolean): Promise<unknown> {
+    // Check if we need to login first
+    await this.login()
+
     // this.log('UPDATE OPTIONS', useFahrenheit)
     // FIXME: Why were we trying to send this as a string instead of as an object, like every other request?
     const response = await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_UPDATE_OPTIONS}`, {
@@ -337,6 +446,9 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
 
   // TODO: Add proper type support
   async setDeviceData(data: unknown): Promise<unknown> {
+    // Check if we need to login first
+    await this.login()
+
     // this.log('SET DEVICE DATA', data)
     const response = await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_SET_DEVICE}`, undefined, { 'X-MitsContextKey': this.ContextKey, 'content-type': 'application/json' }, data)
     if (!response) {
