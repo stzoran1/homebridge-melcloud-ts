@@ -347,7 +347,6 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
             // TODO: Do we need to do this?
             // Update existing accessory context
             existingAccessory.context.device = device
-            existingAccessory.context.device.BuildingID = 
             this.api.updatePlatformAccessories([existingAccessory])
 
             // create the accessory handler for the restored accessory

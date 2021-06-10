@@ -145,7 +145,7 @@ export interface IDeviceGet {
 export interface IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
-  StoragePath: string | null
+  // StoragePath: string | null
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -162,7 +162,7 @@ export interface IMELCloudAPIClient {
 export class MELCloudAPIClient implements IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
-  StoragePath: string | null
+  // StoragePath: string | null
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -185,7 +185,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     return true
   }
 
-  constructor(log: Logger, config: IMELCloudConfig, storagePath: string | null) {
+  constructor(log: Logger, config: IMELCloudConfig, storagePath: string) {
     // Validate and store a reference to the logger
     if (!log) {
       throw new Error('Invalid or null Homebridge logger')
@@ -199,13 +199,16 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     this.config = config
 
     // MELCloud login token (or "context key")
-    this.StoragePath = storagePath
+    // this.StoragePath = storagePath
     this.ContextKey = null
     this.ContextKeyExpirationDate = null
     this.UseFahrenheit = null
 
     // Initialize and load settings from storage
-    storage.init()
+    this.log.debug('Initializing API client storage with path:', storagePath)
+    storage.init({
+      dir: storagePath
+    })
       .then(async() => {
         this.ContextKey = await storage.getItem('ContextKey') || null
         this.log.debug('Loaded ContextKey from storage:', this.ContextKey)
@@ -215,6 +218,9 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
 
         this.UseFahrenheit = await storage.getItem('UseFahrenheit') || null
         this.log.debug('Loaded UseFahrenheit from storage:', this.UseFahrenheit)
+      })
+      .catch(err => {
+        this.log.error('Failed to initialize API client storage:', err)
       })
   }
 
