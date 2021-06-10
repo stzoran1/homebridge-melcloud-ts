@@ -10,6 +10,7 @@ import fetch from 'node-fetch'
 import NodePersist from 'node-persist'
 import NodeCache from 'node-cache'
 import objectHash from 'object-hash'
+import {Mutex, MutexInterface, Semaphore, SemaphoreInterface, withTimeout} from 'async-mutex'
 
 const MELCLOUD_API_ROOT = 'https://app.melcloud.com/Mitsubishi.Wifi.Client'
 const MELCLOUD_API_LOGIN = 'Login/ClientLogin'
@@ -150,6 +151,7 @@ export interface IMELCloudAPIClient {
   // StoragePath: string | null
   storage: NodePersist.LocalStorage
   cache: NodeCache
+  mutex: Mutex
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -169,6 +171,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
   // StoragePath: string | null
   storage: NodePersist.LocalStorage
   cache: NodeCache
+  mutex: Mutex
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -243,6 +246,9 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
       checkperiod: 60, // Check and delete expired items in seconds
       stdTTL: 0 // Default cache time in seconds (0 = unlimited)
     })
+
+    // Initialize mutex
+    this.mutex = new Mutex()
   }
 
   async get(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any> {
@@ -271,21 +277,23 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
       return cachedResponseJSON
     }
 
-    // Run the request and get the response
-    const response = await fetch(url, {
-      method: 'GET',
-      body: formData as any,
-      headers: headers as any
+    return this.mutex.runExclusive(async() => {
+      // Run the request and get the response
+      const response = await fetch(url, {
+        method: 'GET',
+        body: formData as any,
+        headers: headers as any
+      })
+
+      // Convert the response to a JSON string
+      const responseJSON = await response.json()
+
+      // Cache the request response
+      this.cache.set(requestHash, responseJSON, this.requestCacheTime)
+      this.log.debug('Caching response for', this.requestCacheTime, 'seconds:', responseJSON)
+
+      return responseJSON
     })
-
-    // Convert the response to a JSON string
-    const responseJSON = await response.json()
-
-    // Cache the request response
-    this.cache.set(requestHash, responseJSON, this.requestCacheTime)
-    this.log.debug('Caching response for', this.requestCacheTime, 'seconds:', responseJSON)
-
-    return responseJSON
   }
 
   async post(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }, body?: unknown): Promise<any> {
@@ -311,21 +319,30 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     })
     this.log.debug('Generated POST request hash:', requestHash)
 
-    // Run the request and get the response
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData as any,
-      headers: headers as any
+    // Return the cached response (if any)
+    const cachedResponseJSON = this.cache.get(requestHash)
+    if (cachedResponseJSON) {
+      this.log.debug('Returning cached response:', cachedResponseJSON)
+      return cachedResponseJSON
+    }
+
+    return this.mutex.runExclusive(async() => {
+      // Run the request and get the response
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData as any,
+        headers: headers as any
+      })
+
+      // Convert the response to a JSON string
+      const responseJSON = await response.json()
+
+      // Cache the request response
+      this.cache.set(requestHash, responseJSON, this.requestCacheTime)
+      this.log.debug('Caching response for', this.requestCacheTime, 'seconds:', responseJSON)
+
+      return responseJSON
     })
-
-    // Convert the response to a JSON string
-    const responseJSON = await response.json()
-
-    // Cache the request response
-    this.cache.set(requestHash, responseJSON, this.requestCacheTime)
-    this.log.debug('Caching response for', this.requestCacheTime, 'seconds:', responseJSON)
-
-    return responseJSON
   }
 
   async login(): Promise<ILoginData | null> {
