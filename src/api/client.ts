@@ -7,7 +7,9 @@ import { IMELCloudConfig, MELCloudLanguage } from '../config'
 import fetch from 'node-fetch'
 // import url from 'url'
 
-import * as node_persist from 'node-persist'
+import NodePersist from 'node-persist'
+import NodeCache from 'node-cache'
+import objectHash from 'object-hash'
 
 const MELCLOUD_API_ROOT = 'https://app.melcloud.com/Mitsubishi.Wifi.Client'
 const MELCLOUD_API_LOGIN = 'Login/ClientLogin'
@@ -146,7 +148,8 @@ export interface IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
   // StoragePath: string | null
-  storage: node_persist.LocalStorage
+  storage: NodePersist.LocalStorage
+  cache: NodeCache
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -164,7 +167,8 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
   // StoragePath: string | null
-  storage: node_persist.LocalStorage
+  storage: NodePersist.LocalStorage
+  cache: NodeCache
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -187,6 +191,9 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     return true
   }
 
+  // FIXME: Tweak this to get a good balance between responsiveness and caching! (eg. 60 seconds is way too much)
+  private readonly requestCacheTime: number = 10 // Seconds
+
   constructor(log: Logger, config: IMELCloudConfig, storagePath: string) {
     // Validate and store a reference to the logger
     if (!log) {
@@ -206,9 +213,9 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     this.ContextKeyExpirationDate = null
     this.UseFahrenheit = null
 
-    // Initialize and load settings from storage
+    // Initialize storage
     this.log.debug('Initializing API client storage with path:', storagePath)
-    this.storage = node_persist.create({
+    this.storage = NodePersist.create({
       dir: storagePath
     })
 
@@ -228,42 +235,63 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
         this.UseFahrenheit = value
         this.log.debug('Loaded UseFahrenheit from storage:', this.UseFahrenheit)
       })
+
+    // Initialize in-memory cache
+    this.cache = new NodeCache({
+      useClones: true, // False disables cloning of variables and uses direct references instead (faster than copying)
+      deleteOnExpire: true, // Delete after expiration
+      checkperiod: 60, // Check and delete expired items in seconds
+      stdTTL: 0 // Default cache time in seconds (0 = unlimited)
+    })
   }
 
   async get(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any> {
     this.log.info('GET', url, formData, headers)
+
+    // Validate the inputs
     formData = JSON.stringify(formData) as any
     if (!headers) {
       headers = {
         'Content-Type': 'application/json'
       }
     }
+
+    // Generate a hash from the request
+    const requestHash = objectHash({
+      url,
+      formData,
+      headers
+    })
+    this.log.debug('Generated GET request hash:', requestHash)
+
+    // Return the cached response (if any)
+    const cachedResponseJSON = this.cache.get(requestHash)
+    if (cachedResponseJSON) {
+      this.log.debug('Returning cached response:', cachedResponseJSON)
+      return cachedResponseJSON
+    }
+
+    // Run the request and get the response
     const response = await fetch(url, {
       method: 'GET',
       body: formData as any,
       headers: headers as any
     })
-    return await response.json()
-    // const response: Response = await request.get({ url: url, formData: formData, headers: headers })
-    // return response.toJSON()
-    // return new Promise(async(resolve, reject) => {
-    //   await request.get({ url: url, formData: formData, headers: headers })
-    //     .then((response: Response) => {
-    //       try {
-    //         const jsonResponse = JSON.parse(response)
-    //         return resolve(jsonResponse)
-    //       } catch (err) {
-    //         return reject(new Error('Failed to parse response as JSON: ' + err.message))
-    //       }
-    //     })
-    //     .catch((err: Error) => {
-    //       return reject(err)
-    //     })
-    // })
+
+    // Convert the response to a JSON string
+    const responseJSON = await response.json()
+
+    // Cache the request response
+    this.cache.set(requestHash, responseJSON, this.requestCacheTime)
+    this.log.debug('Caching response for', this.requestCacheTime, 'seconds:', responseJSON)
+
+    return responseJSON
   }
 
   async post(url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }, body?: unknown): Promise<any> {
     this.log.info('POST', url, formData, headers, body)
+
+    // Validate the inputs
     if (!formData) {
       formData = body as any
     }
@@ -273,28 +301,31 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
         'Content-Type': 'application/json'
       }
     }
+
+    // Generate a hash from the request
+    const requestHash = objectHash({
+      url,
+      formData,
+      headers,
+      body
+    })
+    this.log.debug('Generated POST request hash:', requestHash)
+
+    // Run the request and get the response
     const response = await fetch(url, {
       method: 'POST',
       body: formData as any,
       headers: headers as any
     })
-    return await response.json()
-    // const response: Response = await request.post({ url: url, formData: formData, headers: headers, body: body })
-    // return response.toJSON()
-    // return new Promise(async(resolve, reject) => {
-    //   await request.post({ url: url, formData: formData, headers: headers, body: body })
-    //     .then((response: Response) => {
-    //       try {
-    //         const jsonResponse = JSON.parse(response)
-    //         return resolve(jsonResponse)
-    //       } catch (err) {
-    //         return reject(new Error('Failed to parse response as JSON: ' + err.message))
-    //       }
-    //     })
-    //     .catch((err: Error) => {
-    //       return reject(err)
-    //     })
-    // })
+
+    // Convert the response to a JSON string
+    const responseJSON = await response.json()
+
+    // Cache the request response
+    this.cache.set(requestHash, responseJSON, this.requestCacheTime)
+    this.log.debug('Caching response for', this.requestCacheTime, 'seconds:', responseJSON)
+
+    return responseJSON
   }
 
   async login(): Promise<ILoginData | null> {
@@ -339,25 +370,6 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
       throw new Error(`Failed to login: failed to parse response: ${JSON.stringify(response)}`)
     }
     return response.LoginData
-    // return new Promise(async(resolve, reject) => {
-    //   await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LOGIN}`, {
-    //     AppVersion: '1.9.3.0',
-    //     CaptchaChallenge: '',
-    //     CaptchaResponse: '',
-    //     Email: this.config.username,
-    //     Language: this.config.language,
-    //     Password: this.config.password,
-    //     Persist: 'true'
-    //   })
-    //     .then((response: any) => {
-    //       this.ContextKey = response.LoginData.ContextKey
-    //       // this.log('ContextKey:', this.ContextKey)
-    //       return resolve(response.LoginData)
-    //     })
-    //     .catch((err: Error) => {
-    //       return reject(new Error('Failed to login: ' + err.message))
-    //     })
-    // })
   }
 
   async listDevices(): Promise<Array<IDeviceBuilding>> {
@@ -373,15 +385,6 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     }
     this.log.info('listDevices:', JSON.stringify(response))
     return response
-    // return new Promise(async(resolve, reject) => {
-    //   await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_LIST_DEVICES}`, undefined, { 'X-MitsContextKey': this.ContextKey })
-    //     .then((response: unknown) => {
-    //       return resolve(response)
-    //     })
-    //     .catch((err: Error) => {
-    //       return reject(new Error('Failed to list devices: ' + err.message))
-    //     })
-    // })
   }
 
   async getDevice(deviceId: number | null, buildingId: number | null): Promise<IDeviceGet> {
@@ -397,23 +400,13 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     }
     this.log.info('getDevice -> response:', JSON.stringify(response))
     return response
-    // return new Promise(async(resolve, reject) => {
-    //   await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_GET_DEVICE}?id=${deviceId}&BuildingID=${buildingId}`, undefined, { 'X-MitsContextKey': this.ContextKey })
-    //     .then((response: unknown) => {
-    //       if (JSON.stringify(response).search('<!DOCTYPE html>') !== -1) {
-    //         return reject(new Error('Failed to get device: invalid JSON response, HTML detected'))
-    //       }
-    //       return resolve(response)
-    //     })
-    //     .catch((err: Error) => {
-    //       return reject(new Error('Failed to get device: ' + err.message))
-    //     })
-    // })
   }
 
   // FIXME: Actually call this and implement it!
   // TODO: Add proper type support
   async updateOptions(useFahrenheit: boolean): Promise<unknown> {
+    this.log.debug('Updating options: useFahrenheit ->', useFahrenheit)
+
     // Check if we need to login first
     await this.login()
 
@@ -435,29 +428,12 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     }
     this.log.info('updateOptions -> response:', JSON.stringify(response))
     return response
-    // return new Promise(async(resolve, reject) => {
-    //   await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_UPDATE_OPTIONS}`, `{
-    //     UseFahrenheit: ${useFahrenheit},
-    //     EmailOnCommsError: false,
-    //     EmailOnUnitError: false,
-    //     EmailCommsErrors: 1,
-    //     EmailUnitErrors: 1,
-    //     RestorePages: false,
-    //     MarketingCommunication: false,
-    //     AlternateEmailAddress: "",
-    //     Fred: 4
-    //   }`, { 'X-MitsContextKey': this.ContextKey, 'Content-Type': 'application/json' })
-    //     .then((response: any) => {
-    //       return resolve(response)
-    //     })
-    //     .catch((err: Error) => {
-    //       return reject(new Error('Failed to update options: ' + err.message))
-    //     })
-    // })
   }
 
   // TODO: Add proper type support
   async setDeviceData(data: unknown): Promise<unknown> {
+    this.log.debug('Setting device data:', data)
+
     // Check if we need to login first
     await this.login()
 
@@ -468,14 +444,5 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     }
     this.log.info('setDeviceData -> response:', JSON.stringify(response))
     return response
-    // return new Promise(async(resolve, reject) => {
-    //   await this.post(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_SET_DEVICE}`, undefined, { 'X-MitsContextKey': this.ContextKey, 'content-type': 'application/json' }, data)
-    //     .then((response: any) => {
-    //       return resolve(response)
-    //     })
-    //     .catch((err: Error) => {
-    //       return reject(new Error('Failed to set device data: ' + err.message))
-    //     })
-    // })
   }
 }

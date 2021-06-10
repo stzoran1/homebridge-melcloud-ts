@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge MELCloud",
   "name": "homebridge-melcloud-ts",
-  "version": "0.4.1-rc17",
+  "version": "0.4.1-rc18",
   "description": "Homebridge plugin for MELCloud",
   "main": "dist/index.js",
   "files": [
@@ -50,14 +50,18 @@
   "homepage": "https://github.com/Dids/homebridge-melcloud-ts",
   "dependencies": {
     "lodash": "^4.17.21",
+    "node-cache": "^5.1.2",
     "node-fetch": "^2.6.1",
-    "node-persist": "^3.1.0"
+    "node-persist": "^3.1.0",
+    "object-hash": "^2.2.0"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.170",
     "@types/node": "^15.12.2",
+    "@types/node-cache": "^4.2.5",
     "@types/node-fetch": "^2.5.10",
     "@types/node-persist": "^3.1.1",
+    "@types/object-hash": "^2.1.0",
     "@types/request-promise-native": "^1.0.17",
     "@typescript-eslint/eslint-plugin": "^4.26.1",
     "@typescript-eslint/parser": "^4.26.1",
