@@ -94,6 +94,7 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
 
   updateDeviceInfo(): Promise<void>
   getDeviceInfo(): Promise<IDeviceGet>
+  sendDeviceData(characteristic: Characteristic, value: CharacteristicValue): Promise<void>
 
   // readonly log: Logging
   // readonly config: IMELCloudAccessoryConfig
@@ -675,6 +676,62 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   async getDeviceInfo(): Promise<IDeviceGet> {
     const device: IDevice = this.accessory.context.device
     return this.platform.client.getDevice(device.DeviceID, device.BuildingID)
+  }
+
+  async sendDeviceData(characteristic: Characteristic, value: CharacteristicValue): Promise<void> {
+    // TODO: The payload may need more properties than what we're providing it!
+    const data: IDeviceGet = {} as IDeviceGet
+
+    // Prepare the data payload based on the input
+    switch (characteristic.UUID) {
+      case this.api.hap.Characteristic.TargetHeatingCoolingState.UUID:
+        switch (value) {
+          case this.api.hap.Characteristic.TargetHeatingCoolingState.OFF:
+            data.Power = false
+            data.EffectiveFlags = 1
+            break
+
+          case this.api.hap.Characteristic.TargetHeatingCoolingState.HEAT:
+            data.Power = true
+            data.OperationMode = 1
+            data.EffectiveFlags = 1 + 2
+            break
+
+          case this.api.hap.Characteristic.TargetHeatingCoolingState.COOL:
+            data.Power = true
+            data.OperationMode = 3
+            data.EffectiveFlags = 1 + 2
+            break
+
+          case this.api.hap.Characteristic.TargetHeatingCoolingState.AUTO:
+            data.Power = true
+            data.OperationMode = 8
+            data.EffectiveFlags = 1 + 2
+            break
+
+          default:
+            break
+        }
+        break
+
+      case this.api.hap.Characteristic.TargetTemperature.UUID:
+        data.SetTemperature = value as number
+        data.EffectiveFlags = 4
+        break
+
+        // FIXME: Not sure what the original intention here was? To forcibly update the value from local to API?
+        // case this.api.hap.Characteristic.TemperatureDisplayUnits.UUID:
+        //   this.api.platformAccessory.updateApplicationOptions(value == this.api.hap.Characteristic.TemperatureDisplayUnits.FAHRENHEIT)
+        //   break
+
+        // TODO: Add rotation speed and tilt angles etc. too?
+
+      default:
+        break
+    }
+
+    // Send the data payload to the MELCloud API
+    await this.platform.client.setDeviceData(data)
   }
 
   // constructor(log: Logging, config: AccessoryConfig | IMELCloudAccessoryConfig, api: API) {
