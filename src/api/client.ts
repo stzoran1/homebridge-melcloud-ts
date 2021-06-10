@@ -270,14 +270,15 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     })
     this.log.debug('Generated GET request hash:', requestHash)
 
-    // Return the cached response (if any)
-    const cachedResponseJSON = this.cache.get(requestHash)
-    if (cachedResponseJSON) {
-      this.log.debug('Returning cached response:', cachedResponseJSON)
-      return cachedResponseJSON
-    }
-
+    // Lock the call until caching is complete and before checking the cache
     return this.mutex.runExclusive(async() => {
+      // Return the cached response (if any)
+      const cachedResponseJSON = this.cache.get(requestHash)
+      if (cachedResponseJSON) {
+        this.log.debug('Returning cached response:', cachedResponseJSON)
+        return cachedResponseJSON
+      }
+
       // Run the request and get the response
       const response = await fetch(url, {
         method: 'GET',
@@ -319,14 +320,15 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     })
     this.log.debug('Generated POST request hash:', requestHash)
 
-    // Return the cached response (if any)
-    const cachedResponseJSON = this.cache.get(requestHash)
-    if (cachedResponseJSON) {
-      this.log.debug('Returning cached response:', cachedResponseJSON)
-      return cachedResponseJSON
-    }
-
+    // Lock the call until caching is complete and before checking the cache
     return this.mutex.runExclusive(async() => {
+      // Return the cached response (if any)
+      const cachedResponseJSON = this.cache.get(requestHash)
+      if (cachedResponseJSON) {
+        this.log.debug('Returning cached response:', cachedResponseJSON)
+        return cachedResponseJSON
+      }
+
       // Run the request and get the response
       const response = await fetch(url, {
         method: 'POST',
