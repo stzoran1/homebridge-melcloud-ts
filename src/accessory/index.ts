@@ -674,7 +674,7 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
 
   async getDeviceInfo(): Promise<IDeviceGet> {
     const device: IDevice = this.accessory.context.device
-    return this.platform.client.getDevice(device.DeviceName, device.BuildingID)
+    return this.platform.client.getDevice(device.DeviceID, device.BuildingID)
   }
 
   // constructor(log: Logging, config: AccessoryConfig | IMELCloudAccessoryConfig, api: API) {

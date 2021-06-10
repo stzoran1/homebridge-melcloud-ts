@@ -155,7 +155,7 @@ export interface IMELCloudAPIClient {
   post (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
   login (): Promise<ILoginData | null>
   listDevices (): Promise<Array<IDeviceBuilding>>
-  getDevice (deviceId: string | null, buildingId: number | null): Promise<IDeviceGet>
+  getDevice (deviceId: number | null, buildingId: number | null): Promise<IDeviceGet>
   updateOptions (useFahrenheit: boolean): Promise<unknown> // FIXME: Add proper type support
   setDeviceData (data: unknown): Promise<unknown> // FIXME: Add proper type support
 }
@@ -384,7 +384,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     // })
   }
 
-  async getDevice(deviceId: string | null, buildingId: number | null): Promise<IDeviceGet> {
+  async getDevice(deviceId: number | null, buildingId: number | null): Promise<IDeviceGet> {
     this.log.debug('Getting device with DeviceID', deviceId, 'and BuildingID', buildingId)
 
     // Check if we need to login first
