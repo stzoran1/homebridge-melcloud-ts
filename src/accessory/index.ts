@@ -58,14 +58,14 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
 
   handleCurrentHeatingCoolingStateGet(): Promise<number>
   handleTargetHeatingCoolingStateGet(): Promise<number>
-  handleTargetHeatingCoolingStateSet(value: CharacteristicValue): void
+  handleTargetHeatingCoolingStateSet(value: CharacteristicValue): Promise<void>
 
   handleCurrentTemperatureGet(): Promise<number>
   handleTargetTemperatureGet(): Promise<number>
-  handleTargetTemperatureSet(value: CharacteristicValue): void
+  handleTargetTemperatureSet(value: CharacteristicValue): Promise<void>
 
   handleTemperatureDisplayUnitsGet(): Promise<number>
-  handleTemperatureDisplayUnitsSet(value: CharacteristicValue): void
+  handleTemperatureDisplayUnitsSet(value: CharacteristicValue): Promise<void>
 
   // handleCurrentRelativeHumidityGet(): number
   // handleTargetRelativeHumidityGet(): number
@@ -94,7 +94,7 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
 
   updateDeviceInfo(): Promise<void>
   getDeviceInfo(): Promise<IDeviceGet>
-  sendDeviceData(characteristic: Characteristic, value: CharacteristicValue): Promise<void>
+  sendDeviceData(characteristicUUID: string, value: CharacteristicValue): Promise<void>
 
   // readonly log: Logging
   // readonly config: IMELCloudAccessoryConfig
@@ -316,10 +316,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to set the "Target Heating Cooling State" characteristic
    */
-  handleTargetHeatingCoolingStateSet(value: CharacteristicValue): void {
+  async handleTargetHeatingCoolingStateSet(value: CharacteristicValue): Promise<void> {
     this.log.debug('Triggered SET TargetHeatingCoolingState:', value)
 
     this.targetHeatingCoolingState = value as number
+
+    await this.sendDeviceData(this.api.hap.Characteristic.TargetHeatingCoolingState.UUID, this.targetHeatingCoolingState)
   }
 
   /**
@@ -361,7 +363,7 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to set the "Target Temperature" characteristic
    */
-  handleTargetTemperatureSet(value: CharacteristicValue): void {
+  async handleTargetTemperatureSet(value: CharacteristicValue): Promise<void> {
     this.log.debug('Triggered SET TargetTemperature:', value)
 
     const minCurrentTemperature = 10
@@ -369,6 +371,8 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     const currentValue = Math.min(maxCurrentTemperature, Math.max(minCurrentTemperature, value as number))
 
     this.targetTemperature = currentValue
+
+    await this.sendDeviceData(this.api.hap.Characteristic.TargetTemperature.UUID, this.targetTemperature)
   }
 
   /**
@@ -390,10 +394,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   /**
    * Handle requests to set the "Temperature Display Units" characteristic
    */
-  handleTemperatureDisplayUnitsSet(value: CharacteristicValue): void {
+  async handleTemperatureDisplayUnitsSet(value: CharacteristicValue): Promise<void> {
     this.log.debug('Triggered SET TemperatureDisplayUnits:', value)
 
     this.temperatureDisplayUnits = Math.min(1, Math.max(0, value as number))
+
+    await this.sendDeviceData(this.api.hap.Characteristic.TemperatureDisplayUnits.UUID, this.temperatureDisplayUnits)
   }
 
   // /**
@@ -678,12 +684,12 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     return this.platform.client.getDevice(device.DeviceID, device.BuildingID)
   }
 
-  async sendDeviceData(characteristic: Characteristic, value: CharacteristicValue): Promise<void> {
+  async sendDeviceData(characteristicUUID: string, value: CharacteristicValue): Promise<void> {
     // TODO: The payload may need more properties than what we're providing it!
     const data: IDeviceGet = {} as IDeviceGet
 
     // Prepare the data payload based on the input
-    switch (characteristic.UUID) {
+    switch (characteristicUUID) {
       case this.api.hap.Characteristic.TargetHeatingCoolingState.UUID:
         switch (value) {
           case this.api.hap.Characteristic.TargetHeatingCoolingState.OFF:
