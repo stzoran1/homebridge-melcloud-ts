@@ -7,7 +7,7 @@ import { IMELCloudConfig, MELCloudLanguage } from '../config'
 import fetch from 'node-fetch'
 // import url from 'url'
 
-import * as storage from 'node-persist'
+import * as node_persist from 'node-persist'
 
 const MELCLOUD_API_ROOT = 'https://app.melcloud.com/Mitsubishi.Wifi.Client'
 const MELCLOUD_API_LOGIN = 'Login/ClientLogin'
@@ -146,6 +146,7 @@ export interface IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
   // StoragePath: string | null
+  storage: node_persist.LocalStorage
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -163,6 +164,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
   log: Logger
   config: IMELCloudConfig
   // StoragePath: string | null
+  storage: node_persist.LocalStorage
   ContextKey: string | null
   ContextKeyExpirationDate: Date | null
   UseFahrenheit: boolean | null
@@ -206,21 +208,25 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
 
     // Initialize and load settings from storage
     this.log.debug('Initializing API client storage with path:', storagePath)
-    storage.init({
+    this.storage = node_persist.create({
       dir: storagePath
     })
-      .then(async() => {
-        this.ContextKey = await storage.getItem('ContextKey') || null
+
+    // Load settings from storage
+    this.storage.getItem('ContextKey')
+      .then(value => {
+        this.ContextKey = value
         this.log.debug('Loaded ContextKey from storage:', this.ContextKey)
-
-        this.ContextKeyExpirationDate = await storage.getItem('ContextKeyExpirationDate') || null
-        this.log.debug('Loaded ContextKeyExpirationDate from storage:', this.ContextKeyExpirationDate)
-
-        this.UseFahrenheit = await storage.getItem('UseFahrenheit') || null
-        this.log.debug('Loaded UseFahrenheit from storage:', this.UseFahrenheit)
       })
-      .catch(err => {
-        this.log.error('Failed to initialize API client storage:', err)
+    this.storage.getItem('ContextKeyExpirationDate')
+      .then(value => {
+        this.ContextKeyExpirationDate = value
+        this.log.debug('Loaded ContextKeyExpirationDate from storage:', this.ContextKeyExpirationDate)
+      })
+    this.storage.getItem('UseFahrenheit')
+      .then(value => {
+        this.UseFahrenheit = value
+        this.log.debug('Loaded UseFahrenheit from storage:', this.UseFahrenheit)
       })
   }
 
@@ -318,17 +324,17 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     this.log.info('login -> response:', JSON.stringify(response))
     if (response.LoginData) {
       this.ContextKey = response.LoginData.ContextKey
-      await storage.setItem('ContextKey', this.ContextKey)
+      await this.storage.setItem('ContextKey', this.ContextKey)
       if (response.LoginData.Expiry) {
         this.ContextKeyExpirationDate = new Date(response.LoginData.Expiry)
         this.ContextKeyExpirationDate.setHours(0)
         this.ContextKeyExpirationDate.setMinutes(0)
         this.ContextKeyExpirationDate.setSeconds(0)
         this.ContextKeyExpirationDate.setMilliseconds(0)
-        await storage.setItem('ContextKeyExpirationDate', this.ContextKeyExpirationDate)
+        await this.storage.setItem('ContextKeyExpirationDate', this.ContextKeyExpirationDate)
       }
       this.UseFahrenheit = response.LoginData.UseFahrenheit
-      await storage.setItem('UseFahrenheit', this.UseFahrenheit)
+      await this.storage.setItem('UseFahrenheit', this.UseFahrenheit)
     } else {
       throw new Error(`Failed to login: failed to parse response: ${JSON.stringify(response)}`)
     }
