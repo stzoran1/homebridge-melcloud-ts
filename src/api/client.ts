@@ -109,7 +109,7 @@ export interface IDevice {
   } | null
 }
 
-export interface IDeviceGet {
+export interface IDeviceDetails {
   // FIXME: Implement all the missing things!
   EffectiveFlags: number | null
   LocalIPAddress: string | null
@@ -160,9 +160,9 @@ export interface IMELCloudAPIClient {
   post (url: string, formData?: { [key: string]: unknown }, headers?: { [key: string]: unknown }): Promise<any>
   login (): Promise<ILoginData | null>
   listDevices (): Promise<Array<IDeviceBuilding>>
-  getDevice (deviceId: number | null, buildingId: number | null): Promise<IDeviceGet>
+  getDevice (deviceId: number | null, buildingId: number | null): Promise<IDeviceDetails>
   updateOptions (useFahrenheit: boolean): Promise<unknown> // FIXME: Add proper type support
-  setDeviceData (data: IDeviceGet): Promise<unknown> // FIXME: Add proper type support
+  setDeviceData (data: IDeviceDetails): Promise<unknown> // FIXME: Add proper type support
 }
 
 export class MELCloudAPIClient implements IMELCloudAPIClient {
@@ -406,14 +406,14 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     return response
   }
 
-  async getDevice(deviceId: number | null, buildingId: number | null): Promise<IDeviceGet> {
+  async getDevice(deviceId: number | null, buildingId: number | null): Promise<IDeviceDetails> {
     this.log.debug('Getting device with DeviceID', deviceId, 'and BuildingID', buildingId)
 
     // Check if we need to login first
     await this.login()
 
     // this.log('GET DEVICE', deviceId, buildingId)
-    const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_GET_DEVICE}?id=${deviceId}&BuildingID=${buildingId}`, undefined, { 'X-MitsContextKey': this.ContextKey }) as IDeviceGet
+    const response = await this.get(`${MELCLOUD_API_ROOT}/${MELCLOUD_API_GET_DEVICE}?id=${deviceId}&BuildingID=${buildingId}`, undefined, { 'X-MitsContextKey': this.ContextKey }) as IDeviceDetails
     if (!response) {
       throw new Error(`Failed to get device: invalid JSON response: ${JSON.stringify(response)}`)
     }
@@ -449,8 +449,8 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     return response
   }
 
-  // TODO: Add proper type support
-  async setDeviceData(data: IDeviceGet): Promise<unknown> {
+  // FIXME: Does this just return an IDevice?
+  async setDeviceData(data: IDeviceDetails): Promise<unknown> {
     this.log.debug('Setting device data:', data)
 
     // Check if we need to login first
@@ -461,6 +461,7 @@ export class MELCloudAPIClient implements IMELCloudAPIClient {
     if (!response) {
       throw new Error(`Failed to set device data: invalid JSON response: ${response}`)
     }
+    // FIXME: Verify if the response here is an IDevice or not!
     this.log.info('setDeviceData -> response:', JSON.stringify(response))
     return response
   }

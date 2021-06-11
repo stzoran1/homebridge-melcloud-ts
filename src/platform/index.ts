@@ -16,7 +16,7 @@ import {
   Service
 } from 'homebridge'
 import * as _ from 'lodash'
-import { IDevice, IDeviceBuilding, IMELCloudAPIClient, MELCloudAPIClient } from '../api/client'
+import { IDeviceDetails, IDeviceBuilding, IDevice, IMELCloudAPIClient, MELCloudAPIClient } from '../api/client'
 import { IMELCloudConfig, PLATFORM_NAME, PLUGIN_NAME, validateMELCloudConfig } from '../config'
 import MELCloudBridgedAccessory, { IMELCloudBridgedAccessory } from '../accessory'
 
@@ -272,12 +272,12 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
   async getDevices(): Promise<void> {
     this.log.debug('Getting devices..')
     return this.client.listDevices()
-      .then(response => {
+      .then(buildings => {
         // Prepare an array of accessories
         // const foundAccessories = [] as Array<PlatformAccessory>
 
         // Parse and loop through all buildings
-        for (const building of response) {
+        for (const building of buildings) {
           if (building) {
             this.log.debug('Building:', building)
 
@@ -347,6 +347,7 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
             // TODO: Do we need to do this?
             // Update existing accessory context
             existingAccessory.context.device = device
+            existingAccessory.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
             this.api.updatePlatformAccessories([existingAccessory])
 
             // create the accessory handler for the restored accessory
@@ -367,6 +368,7 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
             // store a copy of the device object in the `accessory.context`
             // the `context` property can be used to store any data about the accessory you may need
             accessory.context.device = device
+            accessory.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
 
             // create the accessory handler for the newly create accessory
             // this is imported from `platformAccessory.ts`

@@ -30,7 +30,7 @@ import {
 // } from 'hap-nodejs/dist/lib/definitions/CharacteristicDefinitions'
 // import { IMELCloudAccessoryConfig, validateMELCloudAccessoryConfig } from '../config'
 import { IMELCloudPlatform } from '../platform'
-import { IDevice, IDeviceGet } from '../api/client'
+import { IDevice, IDeviceDetails } from '../api/client'
 
 export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   readonly service: Service
@@ -93,7 +93,7 @@ export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
   // handleTargetVerticalTiltAngleSet(value: CharacteristicValue): void
 
   updateDeviceInfo(): Promise<void>
-  getDeviceInfo(): Promise<IDeviceGet>
+  getDeviceInfo(): Promise<IDeviceDetails>
   sendDeviceData(characteristicUUID: string, value: CharacteristicValue): Promise<void>
 
   // readonly log: Logging
@@ -679,14 +679,21 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     // TODO: What about DefaultHeatingSetTemperature/DefaultCoolingSetTemperature in the API response?
   }
 
-  async getDeviceInfo(): Promise<IDeviceGet> {
+  async getDeviceInfo(): Promise<IDeviceDetails> {
     const device: IDevice = this.accessory.context.device
-    return this.platform.client.getDevice(device.DeviceID, device.BuildingID)
+    const deviceDetails: IDeviceDetails = await this.platform.client.getDevice(device.DeviceID, device.BuildingID)
+    this.accessory.context.deviceDetails = deviceDetails
+    return deviceDetails
   }
 
   async sendDeviceData(characteristicUUID: string, value: CharacteristicValue): Promise<void> {
     // TODO: The payload may need more properties than what we're providing it!
-    const data: IDeviceGet = {} as IDeviceGet
+    const data: IDeviceDetails = this.accessory.context.deviceDetails
+
+    if (!data) {
+      this.log.warn('Unable to update device data, missing device details')
+      return
+    }
 
     // Prepare the data payload based on the input
     switch (characteristicUUID) {
