@@ -147,7 +147,7 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   public readonly log: Logger
   public readonly api: API
 
-  public readonly useThermostat: boolean = true
+  public readonly useThermostat: boolean = false
 
   public active: number
   public currentHeaterCoolerState: number
