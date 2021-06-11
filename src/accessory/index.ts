@@ -147,7 +147,7 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
   public readonly log: Logger
   public readonly api: API
 
-  public readonly useThermostat: boolean = false
+  public readonly useThermostat: boolean = true
 
   public active: number
   public currentHeaterCoolerState: number
@@ -953,6 +953,8 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     // Update target temperature
     if (deviceInfo.SetTemperature) {
       this.targetTemperature = deviceInfo.SetTemperature
+      this.coolingThresholdTemperature = deviceInfo.SetTemperature
+      this.heatingThresholdTemperature = deviceInfo.SetTemperature
     }
 
     // Update temperature display units
@@ -1084,6 +1086,16 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
         break
 
       case this.api.hap.Characteristic.TargetTemperature.UUID:
+        data.SetTemperature = value as number
+        data.EffectiveFlags = 4
+        break
+
+      case this.api.hap.Characteristic.CoolingThresholdTemperature.UUID:
+        data.SetTemperature = value as number
+        data.EffectiveFlags = 4
+        break
+
+      case this.api.hap.Characteristic.HeatingThresholdTemperature.UUID:
         data.SetTemperature = value as number
         data.EffectiveFlags = 4
         break
