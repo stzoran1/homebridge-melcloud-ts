@@ -2,7 +2,7 @@
   "pluginAlias": "MELCloud",
   "pluginType": "platform",
   "singular": false,
-  "headerDisplay": "Homebridge plugin for [MELCloud](https://app.melcloud.com)",
+  "headerDisplay": "Homebridge plugin for [MELCloud](https://app.melcloud.com).",
   "footerDisplay": "",
   "schema": {
     "type": "object",

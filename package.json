@@ -1,8 +1,8 @@
 {
   "displayName": "Homebridge MELCloud",
   "name": "homebridge-melcloud-ts",
-  "version": "0.5.0-rc2",
-  "description": "Homebridge plugin for MELCloud",
+  "version": "0.5.0-rc4",
+  "description": "Homebridge plugin for MELCloud.",
   "main": "dist/index.js",
   "files": [
     "dist/*.js",
