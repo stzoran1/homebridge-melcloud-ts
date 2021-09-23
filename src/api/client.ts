@@ -114,7 +114,9 @@ export interface IDeviceDetails {
   EffectiveFlags: number | null
   LocalIPAddress: string | null
   RoomTemperature: number | null
+  RoomTemperatureZone1: number | null
   SetTemperature: number | null
+  SetTemperatureZone1: number | null
   SetFanSpeed: number | null
   OperationMode: number | null
   VaneHorizontal: number | null

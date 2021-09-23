@@ -886,6 +886,7 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     const SwingMode = this.api.hap.Characteristic.SwingMode
 
     // Update active
+    // TODO: Is Power same as Active?
     this.active = deviceInfo.Power != null && deviceInfo.Power ? Active.ACTIVE : Active.INACTIVE
 
     // Update current heater/heating cooler/cooling state
@@ -948,6 +949,8 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     // Update current temperature
     if (deviceInfo.RoomTemperature) {
       this.currentTemperature = deviceInfo.RoomTemperature
+    } else if (deviceInfo.RoomTemperatureZone1) {
+      this.currentTemperature = deviceInfo.RoomTemperatureZone1
     }
 
     // Update target temperature
@@ -955,6 +958,10 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
       this.targetTemperature = deviceInfo.SetTemperature
       this.coolingThresholdTemperature = deviceInfo.SetTemperature
       this.heatingThresholdTemperature = deviceInfo.SetTemperature
+    } else if (deviceInfo.SetTemperatureZone1) {
+      this.targetTemperature = deviceInfo.SetTemperatureZone1
+      this.coolingThresholdTemperature = deviceInfo.SetTemperatureZone1
+      this.heatingThresholdTemperature = deviceInfo.SetTemperatureZone1
     }
 
     // Update temperature display units
