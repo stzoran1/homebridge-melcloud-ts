@@ -1,13 +1,7 @@
 import {
   API,
   APIEvent,
-  CharacteristicEventTypes,
-  CharacteristicGetCallback,
-  CharacteristicSetCallback,
-  CharacteristicValue,
   DynamicPlatformPlugin,
-  HAP,
-  IndependentPlatformPlugin,
   Logger,
   PlatformAccessory,
   PlatformAccessoryEvent,
@@ -16,7 +10,7 @@ import {
   Service
 } from 'homebridge'
 import * as _ from 'lodash'
-import { IDeviceDetails, IDeviceBuilding, IDevice, IMELCloudAPIClient, MELCloudAPIClient } from '../api/client'
+import { IDeviceBuilding, IDevice, IMELCloudAPIClient, MELCloudAPIClient } from '../api/client'
 import { IMELCloudConfig, PLATFORM_NAME, PLUGIN_NAME, validateMELCloudConfig } from '../config'
 import MELCloudBridgedAccessory, { IMELCloudBridgedAccessory } from '../accessory'
 
@@ -36,31 +30,6 @@ export interface IMELCloudPlatform extends DynamicPlatformPlugin {
   getDevices(): Promise<void>
   createAccessories(building: IDeviceBuilding, devices: Array<IDevice> | null): Promise<void>
 
-  // TODO: Re-enable
-  // UseFahrenheit: boolean
-  // CurrentHeatingCoolingStateUUID: any
-  // TargetHeatingCoolingStateUUID: any
-  // CurrentTemperatureUUID: any
-  // TargetTemperatureUUID: any
-  // TemperatureDisplayUnitsUUID: any
-  // RotationSpeedUUID: any
-  // CurrentHorizontalTiltAngleUUID: any
-  // TargetHorizontalTiltAngleUUID: any
-  // CurrentVerticalTiltAngleUUID: any
-  // TargetVerticalTiltAngleUUID: any
-  // currentAirInfoExecution: number
-  // airInfoExecutionPending: Array<any>
-
-  // updateAccessories (): Promise<any>
-  // getDevices (): Promise<Array<any>>
-  // createAccessories (building: any, devices: any, foundAccessories: Array<any>): void
-  // proxyAirInfo (callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any, operation: any): Promise<any>
-  // getAccessoryValue (callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any): void
-  // setAccessoryValue (callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any): Promise<any>
-  // updateApplicationOptions (UseFahrenheit: boolean): Promise<any>
-  // getInformationService (homebridgeAccessory: IMELCloudBridgedAccessory): any
-  // bindCharacteristicEvents (characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory): void
-  // getServices (homebridgeAccessory: IMELCloudBridgedAccessory): Array<any>
 }
 
 /**
@@ -84,22 +53,6 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
   public readonly client: IMELCloudAPIClient
   // #endregion
 
-  // TODO: Re-enable
-  // #region MELCloudPlatform - Properties
-  // UseFahrenheit: boolean
-  // CurrentHeatingCoolingStateUUID: any
-  // TargetHeatingCoolingStateUUID: any
-  // CurrentTemperatureUUID: any
-  // TargetTemperatureUUID: any
-  // TemperatureDisplayUnitsUUID: any
-  // RotationSpeedUUID: any
-  // CurrentHorizontalTiltAngleUUID: any
-  // TargetHorizontalTiltAngleUUID: any
-  // CurrentVerticalTiltAngleUUID: any
-  // TargetVerticalTiltAngleUUID: any
-  // currentAirInfoExecution: number
-  // airInfoExecutionPending: Array<{ callback: any, characteristic: Characteristic, service: Service, homebridgeAccessory: IMELCloudBridgedAccessory, value: any, operation: any }>
-  // #endregion
 
   constructor(log: Logger, config: PlatformConfig | IMELCloudConfig, api: API) {
     // Store a reference to the logger
@@ -129,22 +82,6 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
     if (!this.client) {
       throw new Error('Failed to create MELCloud API client')
     }
-
-    // TODO: Re-enable
-    // Setup MELCloud specific accessory/service information
-    // this.UseFahrenheit = false
-    // this.CurrentHeatingCoolingStateUUID = (new api.hap.Characteristic.CurrentHeatingCoolingState()).UUID
-    // this.TargetHeatingCoolingStateUUID = (new api.hap.Characteristic.TargetHeatingCoolingState()).UUID
-    // this.CurrentTemperatureUUID = (new api.hap.Characteristic.CurrentTemperature()).UUID
-    // this.TargetTemperatureUUID = (new api.hap.Characteristic.TargetTemperature()).UUID
-    // this.TemperatureDisplayUnitsUUID = (new api.hap.Characteristic.TemperatureDisplayUnits()).UUID
-    // this.RotationSpeedUUID = (new api.hap.Characteristic.RotationSpeed()).UUID
-    // this.CurrentHorizontalTiltAngleUUID = (new api.hap.Characteristic.CurrentHorizontalTiltAngle()).UUID
-    // this.TargetHorizontalTiltAngleUUID = (new api.hap.Characteristic.TargetHorizontalTiltAngle()).UUID
-    // this.CurrentVerticalTiltAngleUUID = (new api.hap.Characteristic.CurrentVerticalTiltAngle()).UUID
-    // this.TargetVerticalTiltAngleUUID = (new api.hap.Characteristic.TargetVerticalTiltAngle()).UUID
-    // this.currentAirInfoExecution = 0
-    // this.airInfoExecutionPending = []
 
     this.log.debug('Finished initializing platform:', this.config.name)
 
@@ -193,78 +130,9 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
   async discoverDevices(): Promise<void> {
     this.log.info('Discovering devices as accessories')
 
-    // TODO: UPDATE: This is now a part of client.UseFahrenheit (FIXME: The value is ONLY updated on login though?!)
-    // TODO: Set UseFahrenheit from loginResponse.UseFahrenheit
-    // loginResponse.UseFahrenheit
-
     // Get devices from MELCloud and add them as HomeKit accessories
     await this.getDevices()
 
-    // TODO: Now just add all accessories to this.accessories and register them with Homebridge?
-    //       But what about potential duplicates?!
-
-    // TODO: If we discover devices at a set interval, we should DEFINITELY protect against duplicates, removals etc.
-
-    // EXAMPLE ONLY
-    // A real plugin you would discover accessories from the local network, cloud services
-    // or a user-defined array in the platform config.
-    // const exampleDevices = [
-    //   {
-    //     exampleUniqueId: 'ABCD',
-    //     exampleDisplayName: 'Bedroom'
-    //   },
-    //   {
-    //     exampleUniqueId: 'EFGH',
-    //     exampleDisplayName: 'Kitchen'
-    //   }
-    // ]
-
-    // // loop over the discovered devices and register each one if it has not already been registered
-    // for (const device of exampleDevices) {
-
-    //   // generate a unique id for the accessory this should be generated from
-    //   // something globally unique, but constant, for example, the device serial
-    //   // number or MAC address
-    //   const uuid = this.api.hap.uuid.generate(device.exampleUniqueId)
-
-    //   // see if an accessory with the same uuid has already been registered and restored from
-    //   // the cached devices we stored in the `configureAccessory` method above
-    //   const existingAccessory: IMELCloudBridgedAccessory = this.accessories.find(accessory => accessory.UUID === uuid) as IMELCloudBridgedAccessory
-
-    //   if (existingAccessory) {
-    //     // the accessory already exists
-    //     this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
-
-    //     // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
-    //     // existingAccessory.context.device = device;
-    //     // this.api.updatePlatformAccessories([existingAccessory]);
-
-    //     // create the accessory handler for the restored accessory
-    //     // this is imported from `platformAccessory.ts`
-    //     new MELCloudBridgedAccessory(this, existingAccessory)
-
-    //     // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
-    //     // remove platform accessories when no longer present
-    //     // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-    //     // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-    //   } else {
-    //     // the accessory does not yet exist, so we need to create it
-    //     this.log.info('Adding new accessory:', device.exampleDisplayName)
-
-    //     // create a new accessory
-    //     const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid)
-
-    //     // store a copy of the device object in the `accessory.context`
-    //     // the `context` property can be used to store any data about the accessory you may need
-    //     accessory.context.device = device
-
-    //     // create the accessory handler for the newly create accessory
-    //     // this is imported from `platformAccessory.ts`
-    //     new MELCloudBridgedAccessory(this, accessory)
-
-    //     // link the accessory to your platform
-    //     this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-    //   }
   }
 
   // FIXME: This should re-use existing accessories and not always recreate them?!
@@ -378,45 +246,6 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
           }
 
-          // Create an accessory for each device
-          // const accessory = new MELCloudBridgedAccessory(
-          //   // Platform
-          //   this,
-
-          //   // Services
-          //   [
-          //     {
-          //       controlService: new hap.Service.Thermostat(device.DeviceName),
-          //       characteristics: [
-          //         new hap.Characteristic.CurrentHeatingCoolingState,
-          //         new hap.Characteristic.TargetHeatingCoolingState,
-          //         new hap.Characteristic.CurrentTemperature,
-          //         new hap.Characteristic.TargetTemperature,
-          //         new hap.Characteristic.TemperatureDisplayUnits,
-          //         new hap.Characteristic.RotationSpeed,
-          //         new hap.Characteristic.CurrentHorizontalTiltAngle,
-          //         new hap.Characteristic.TargetHorizontalTiltAngle,
-          //         new hap.Characteristic.CurrentVerticalTiltAngle,
-          //         new hap.Characteristic.TargetVerticalTiltAngle
-          //       ]
-          //     }
-          //   ]
-          // )
-
-          // // Further setup the accessory
-          // // accessory.platform = this
-          // accessory.remoteAccessory = device
-          // accessory.id = device.DeviceID
-          // accessory.name = device.DeviceName
-          // accessory.model = ''
-          // accessory.manufacturer = 'Mitsubishi'
-          // accessory.serialNumber = device.SerialNumber
-          // accessory.airInfo = null
-          // accessory.buildingId = building.ID
-          // this.log.debug('Found device:', device.DeviceName)
-
-          // Add the accessory to our array
-          // foundAccessories.push(accessory)
         }
       }
     }
