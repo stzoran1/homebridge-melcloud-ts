@@ -6,40 +6,16 @@ import {
 } from 'homebridge'
 
 import { IMELCloudPlatform } from '../platform'
+import { IMELCloudBridgedAccessory } from '../accessory/iAccessory'
 import { IDevice, IDeviceDetails } from '../api/client'
 
-export interface IMELCloudBridgedAccessory extends Partial<PlatformAccessory> {
-  readonly service: Service
-  readonly platform: IMELCloudPlatform
-  readonly accessory: PlatformAccessory
-
-  readonly log: Logger
-  readonly api: API
-
-  active: number
-  currentTemperature: number
-  targetTemperature: number
-  temperatureDisplayUnits: number
-
-  handleActiveGet(): Promise<number>
-
-  handleCurrentTemperatureGet(): Promise<number>
-
-  handleTargetTemperatureGet(): Promise<number>
-
-  handleTemperatureDisplayUnitsGet(): Promise<number>
-
-  updateDeviceInfo(): Promise<void>
-  getDeviceInfo(): Promise<IDeviceDetails>
-
-}
 
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers
  * Each accessory may expose multiple services of different service types.
  */
-export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccessory {
+export default class RoomTemperatureAccessory implements IMELCloudBridgedAccessory {
   public readonly service: Service
   public readonly platform: IMELCloudPlatform
   public readonly accessory: PlatformAccessory
@@ -49,7 +25,6 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
 
   public active: number
   public currentTemperature: number
-  public targetTemperature: number
   public temperatureDisplayUnits: number
 
   constructor(platform: IMELCloudPlatform, accessory: PlatformAccessory) {
@@ -76,7 +51,6 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     // initialize accessory state
     this.active = this.api.hap.Characteristic.Active.INACTIVE
     this.currentTemperature = -270
-    this.targetTemperature = 10
     this.temperatureDisplayUnits = this.api.hap.Characteristic.TemperatureDisplayUnits.CELSIUS
 
     this.updateDeviceInfo()
@@ -98,21 +72,16 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
       throw new Error('Failed to set accessory information')
     }
 
-
+    //Room temperature
     const service = this.platform.Service.TemperatureSensor
     this.service = this.accessory.getService(service) || this.accessory.addService(service)
 
-    // set the service name, this is what is displayed as the default name on the Home app
-    // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
-    this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName)
-
-    // each service must implement at-minimum the "required characteristics" for the given service type
-    // see https://developers.homebridge.io/#/service/Thermostat
+    this.service.setCharacteristic(this.platform.Characteristic.Name, 'Room Temperature')
 
     // Setup service specific characteristic handlers
     // Register handlers for active
-    this.service.getCharacteristic(this.platform.Characteristic.Active)
-      .onGet(this.handleActiveGet.bind(this))
+    //this.service.getCharacteristic(this.platform.Characteristic.Active)
+    //  .onGet(this.handleActiveGet.bind(this))
 
 
     // Register handlers for current temperature
@@ -122,6 +91,7 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     // Register handlers for temperature display units
     this.service.getCharacteristic(this.platform.Characteristic.TemperatureDisplayUnits)
       .onGet(this.handleTemperatureDisplayUnitsGet.bind(this))
+
   }
 
   /**
@@ -155,23 +125,6 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
     const currentValue = Math.min(maxCurrentTemperature, Math.max(minCurrentTemperature, this.currentTemperature))
 
     this.log.debug('Returning CurrentTemperature with value:', currentValue)
-    return currentValue
-  }
-
-  /**
-   * Handle requests to get the current value of the "Target Temperature" characteristic
-   */
-  async handleTargetTemperatureGet(): Promise<number> {
-    this.log.debug('Triggered GET TargetTemperature')
-
-    // Update device info
-    await this.updateDeviceInfo()
-
-    const minTargetTemperature = 10
-    const maxTargetTemperature = 38
-    const currentValue = Math.min(maxTargetTemperature, Math.max(minTargetTemperature, this.targetTemperature))
-
-    this.log.debug('Returning TargetTemperature with value:', currentValue)
     return currentValue
   }
 
@@ -214,13 +167,6 @@ export default class MELCloudBridgedAccessory implements IMELCloudBridgedAccesso
       this.currentTemperature = deviceInfo.RoomTemperature
     } else if (deviceInfo.RoomTemperatureZone1) {
       this.currentTemperature = deviceInfo.RoomTemperatureZone1
-    }
-
-    // Update target temperature
-    if (deviceInfo.SetTemperature) {
-      this.targetTemperature = deviceInfo.SetTemperature
-    } else if (deviceInfo.SetTemperatureZone1) {
-      this.targetTemperature = deviceInfo.SetTemperatureZone1
     }
 
     // Update temperature display units

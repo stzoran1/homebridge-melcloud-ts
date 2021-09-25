@@ -1,72 +1,72 @@
 {
-  "pluginAlias": "MELCloud",
-  "pluginType": "platform",
-  "singular": false,
-  "headerDisplay": "Homebridge plugin for [MELCloud](https://app.melcloud.com).",
-  "footerDisplay": "",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "name": {
-        "title": "Name",
-        "type": "string",
-        "minLength": 1,
-        "default": "MELCloud",
-        "description": "The name used in both HomeBridge and HomeKit.",
-        "required": true
-      },
-      "language": {
-        "title": "Language",
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 2,
-        "pattern": "^[0-9]+$",
-        "default": "0",
-        "description": "The language used with MELCloud.",
-        "oneOf": [
-          { "title": "English", "enum": ["0"] },
-          { "title": "Български", "enum": ["1"] },
-          { "title": "Čeština", "enum": ["2"] },
-          { "title": "Dansk", "enum": ["3"] },
-          { "title": "Deutsch", "enum": ["4"] },
-          { "title": "Eesti", "enum": ["5"] },
-          { "title": "Español", "enum": ["6"] },
-          { "title": "Français", "enum": ["7"] },
-          { "title": "Հայերեն", "enum": ["8"] },
-          { "title": "Latviešu", "enum": ["9"] },
-          { "title": "Lietuvių", "enum": ["10"] },
-          { "title": "Magyar", "enum": ["11"] },
-          { "title": "Nederlands", "enum": ["12"] },
-          { "title": "Norwegian", "enum": ["13"] },
-          { "title": "Polski", "enum": ["14"] },
-          { "title": "Português", "enum": ["15"] },
-          { "title": "Русский", "enum": ["16"] },
-          { "title": "Suomi", "enum": ["17"] },
-          { "title": "Svenska", "enum": ["18"] },
-          { "title": "Italiano", "enum": ["19"] },
-          { "title": "Українська", "enum": ["20"] },
-          { "title": "Türkçe", "enum": ["21"] },
-          { "title": "Ελληνικά", "enum": ["22"] },
-          { "title": "Hrvatski", "enum": ["23"] },
-          { "title": "Română", "enum": ["24"] },
-          { "title": "Slovenščina", "enum": ["25"] }
-        ],
-        "required": true
-      },
-      "username": {
-        "title": "Username",
-        "type": "string",
-        "description": "The MELCloud account username.",
-        "required": true
-      },
-      "password": {
-        "title": "Password",
-        "type": "string",
-        "description": "The MELCloud account password.",
-        "required": true
-      }
-    }
-  },
-  "form": null,
-  "display": null
+    "pluginAlias": "MELCloudZubadan",
+    "pluginType": "platform",
+    "singular": false,
+    "headerDisplay": "Homebridge plugin for [MELCloud](https://app.melcloud.com).",
+    "footerDisplay": "",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "title": "Name",
+                "type": "string",
+                "minLength": 1,
+                "default": "MELCloud",
+                "description": "The name used in both HomeBridge and HomeKit.",
+                "required": true
+            },
+            "language": {
+                "title": "Language",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2,
+                "pattern": "^[0-9]+$",
+                "default": "0",
+                "description": "The language used with MELCloud.",
+                "oneOf": [
+                    { "title": "English", "enum": ["0"] },
+                    { "title": "Български", "enum": ["1"] },
+                    { "title": "Čeština", "enum": ["2"] },
+                    { "title": "Dansk", "enum": ["3"] },
+                    { "title": "Deutsch", "enum": ["4"] },
+                    { "title": "Eesti", "enum": ["5"] },
+                    { "title": "Español", "enum": ["6"] },
+                    { "title": "Français", "enum": ["7"] },
+                    { "title": "Հայերեն", "enum": ["8"] },
+                    { "title": "Latviešu", "enum": ["9"] },
+                    { "title": "Lietuvių", "enum": ["10"] },
+                    { "title": "Magyar", "enum": ["11"] },
+                    { "title": "Nederlands", "enum": ["12"] },
+                    { "title": "Norwegian", "enum": ["13"] },
+                    { "title": "Polski", "enum": ["14"] },
+                    { "title": "Português", "enum": ["15"] },
+                    { "title": "Русский", "enum": ["16"] },
+                    { "title": "Suomi", "enum": ["17"] },
+                    { "title": "Svenska", "enum": ["18"] },
+                    { "title": "Italiano", "enum": ["19"] },
+                    { "title": "Українська", "enum": ["20"] },
+                    { "title": "Türkçe", "enum": ["21"] },
+                    { "title": "Ελληνικά", "enum": ["22"] },
+                    { "title": "Hrvatski", "enum": ["23"] },
+                    { "title": "Română", "enum": ["24"] },
+                    { "title": "Slovenščina", "enum": ["25"] }
+                ],
+                "required": true
+            },
+            "username": {
+                "title": "Username",
+                "type": "string",
+                "description": "The MELCloud account username.",
+                "required": true
+            },
+            "password": {
+                "title": "Password",
+                "type": "string",
+                "description": "The MELCloud account password.",
+                "required": true
+            }
+        }
+    },
+    "form": null,
+    "display": null
 }

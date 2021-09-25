@@ -12,7 +12,8 @@ import {
 import * as _ from 'lodash'
 import { IDeviceBuilding, IDevice, IMELCloudAPIClient, MELCloudAPIClient } from '../api/client'
 import { IMELCloudConfig, PLATFORM_NAME, PLUGIN_NAME, validateMELCloudConfig } from '../config'
-import MELCloudBridgedAccessory, { IMELCloudBridgedAccessory } from '../accessory'
+import  { IMELCloudBridgedAccessory } from '../accessory/iAccessory'
+import RoomTemperatureAccessory from '../accessory'
 
 export interface IMELCloudPlatform extends DynamicPlatformPlugin {
   readonly log: Logger
@@ -220,7 +221,7 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
 
             // create the accessory handler for the restored accessory
             // this is imported from `platformAccessory.ts`
-            new MELCloudBridgedAccessory(this, existingAccessory)
+            new RoomTemperatureAccessory(this, existingAccessory)
 
             // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
             // remove platform accessories when no longer present
@@ -240,7 +241,7 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
 
             // create the accessory handler for the newly create accessory
             // this is imported from `platformAccessory.ts`
-            new MELCloudBridgedAccessory(this, accessory)
+            new RoomTemperatureAccessory(this, accessory)
 
             // link the accessory to your platform
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
