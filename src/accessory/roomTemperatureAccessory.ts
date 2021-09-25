@@ -27,7 +27,7 @@ export default class RoomTemperatureAccessory implements IMELCloudBridgedAccesso
   public currentTemperature: number
   public temperatureDisplayUnits: number
 
-  constructor(platform: IMELCloudPlatform, accessory: PlatformAccessory) {
+  constructor(platform: IMELCloudPlatform, accessory: PlatformAccessory, accessoryName: string) {
     if (!platform) {
       throw new Error('Invalid or missing platform')
     }
@@ -65,7 +65,7 @@ export default class RoomTemperatureAccessory implements IMELCloudBridgedAccesso
     if (informationService) {
       informationService
         .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Mitsubishi')
-        .setCharacteristic(this.platform.Characteristic.Model, 'Unknown')
+        .setCharacteristic(this.platform.Characteristic.Model, 'Zubadan')
         .setCharacteristic(this.platform.Characteristic.Name, /*accessory.displayName ||*/ device.DeviceName || 'Not Set')
         .setCharacteristic(this.platform.Characteristic.SerialNumber, device.SerialNumber || 'Not Set')
     } else {
@@ -76,7 +76,7 @@ export default class RoomTemperatureAccessory implements IMELCloudBridgedAccesso
     const service = this.platform.Service.TemperatureSensor
     this.service = this.accessory.getService(service) || this.accessory.addService(service)
 
-    this.service.setCharacteristic(this.platform.Characteristic.Name, 'Room Temperature')
+    this.service.setCharacteristic(this.platform.Characteristic.Name, accessoryName)
 
     // Setup service specific characteristic handlers
     // Register handlers for active

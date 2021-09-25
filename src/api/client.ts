@@ -118,6 +118,7 @@ export interface IDeviceDetails {
   SetTemperature: number | null
   SetTemperatureZone1: number | null
   TankWaterTemperature: number | null
+  OutdoorTemperature: number | null
   SetFanSpeed: number | null
   OperationMode: number | null
   VaneHorizontal: number | null

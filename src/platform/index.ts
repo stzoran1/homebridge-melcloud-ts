@@ -12,8 +12,9 @@ import {
 import * as _ from 'lodash'
 import { IDeviceBuilding, IDevice, IMELCloudAPIClient, MELCloudAPIClient } from '../api/client'
 import { IMELCloudConfig, PLATFORM_NAME, PLUGIN_NAME, validateMELCloudConfig } from '../config'
-import  { IMELCloudBridgedAccessory } from '../accessory/iAccessory'
-import RoomTemperatureAccessory from '../accessory'
+import RoomTemperatureAccessory from '../accessory/roomTemperatureAccessory'
+import BoilerTemperatureAccessory from '../accessory/boilerTemperatureAccessory'
+import OutdoorTemperatureAccessory from '../accessory/outdoorTemperatureAccessory'
 
 export interface IMELCloudPlatform extends DynamicPlatformPlugin {
   readonly log: Logger
@@ -199,15 +200,17 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
         // something globally unique, but constant, for example, the device serial
         // number or MAC address
         if (device.DeviceID) {
-          const uuid = this.api.hap.uuid.generate(device.DeviceID.toString())
+          const uuidRoomTemp = this.api.hap.uuid.generate(device.DeviceID.toString() + 'rt')
 
           // see if an accessory with the same uuid has already been registered and restored from
           // the cached devices we stored in the `configureAccessory` method above
-          const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid)
+          const existingAccessoryRoomTemp = this.accessories.find(accessory => accessory.UUID === uuidRoomTemp)
 
-          if (existingAccessory) {
+          const roomTempAccessoryName = 'Room temperature'
+
+          if (existingAccessoryRoomTemp) {
             // the accessory already exists
-            this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
+            this.log.info('Restoring existing accessory from cache:', existingAccessoryRoomTemp.displayName)
 
             // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
             // existingAccessory.context.device = device;
@@ -215,13 +218,13 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
 
             // TODO: Do we need to do this?
             // Update existing accessory context
-            existingAccessory.context.device = device
-            existingAccessory.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
-            this.api.updatePlatformAccessories([existingAccessory])
+            existingAccessoryRoomTemp.context.device = device
+            existingAccessoryRoomTemp.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
+            this.api.updatePlatformAccessories([existingAccessoryRoomTemp])
 
             // create the accessory handler for the restored accessory
             // this is imported from `platformAccessory.ts`
-            new RoomTemperatureAccessory(this, existingAccessory)
+            new RoomTemperatureAccessory(this, existingAccessoryRoomTemp, roomTempAccessoryName)
 
             // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
             // remove platform accessories when no longer present
@@ -232,7 +235,7 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
             this.log.info('Adding new accessory:', device.DeviceName)
 
             // create a new accessory
-            const accessory = new this.api.platformAccessory(device.DeviceName, uuid)
+            const accessory = new this.api.platformAccessory(device.DeviceName, uuidRoomTemp)
 
             // store a copy of the device object in the `accessory.context`
             // the `context` property can be used to store any data about the accessory you may need
@@ -241,7 +244,109 @@ export default class MELCloudPlatform implements IMELCloudPlatform {
 
             // create the accessory handler for the newly create accessory
             // this is imported from `platformAccessory.ts`
-            new RoomTemperatureAccessory(this, accessory)
+            new RoomTemperatureAccessory(this, accessory, roomTempAccessoryName)
+
+            // link the accessory to your platform
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+          }
+
+          //Boiler
+          const uuidBoilerTemp = this.api.hap.uuid.generate(device.DeviceID.toString() + 'bt')
+
+          const boilerTempAccessoryName = 'Boiler temperature'
+
+          // see if an accessory with the same uuid has already been registered and restored from
+          // the cached devices we stored in the `configureAccessory` method above
+          const existingAccessoryBoilerTemp = this.accessories.find(accessory => accessory.UUID === uuidBoilerTemp)
+
+          if (existingAccessoryBoilerTemp) {
+            // the accessory already exists
+            this.log.info('Restoring existing accessory from cache:', existingAccessoryBoilerTemp.displayName)
+
+            // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
+            // existingAccessory.context.device = device;
+            // this.api.updatePlatformAccessories([existingAccessory]);
+
+            // TODO: Do we need to do this?
+            // Update existing accessory context
+            existingAccessoryBoilerTemp.context.device = device
+            existingAccessoryBoilerTemp.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
+            this.api.updatePlatformAccessories([existingAccessoryBoilerTemp])
+
+            // create the accessory handler for the restored accessory
+            // this is imported from `platformAccessory.ts`
+            new BoilerTemperatureAccessory(this, existingAccessoryBoilerTemp, boilerTempAccessoryName)
+
+            // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
+            // remove platform accessories when no longer present
+            // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
+            // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
+          } else if (device.DeviceName) {
+            // the accessory does not yet exist, so we need to create it
+            this.log.info('Adding new accessory:', device.DeviceName)
+
+            // create a new accessory
+            const accessory = new this.api.platformAccessory(device.DeviceName, uuidBoilerTemp)
+
+            // store a copy of the device object in the `accessory.context`
+            // the `context` property can be used to store any data about the accessory you may need
+            accessory.context.device = device
+            accessory.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
+
+            // create the accessory handler for the newly create accessory
+            // this is imported from `platformAccessory.ts`
+            new BoilerTemperatureAccessory(this, accessory, boilerTempAccessoryName)
+
+            // link the accessory to your platform
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+          }
+
+          //Outdoor
+          const uuidOutdoorTemp = this.api.hap.uuid.generate(device.DeviceID.toString() + 'ot')
+
+          const outdoorTempAccessoryName = 'Outdoor temperature'
+
+          // see if an accessory with the same uuid has already been registered and restored from
+          // the cached devices we stored in the `configureAccessory` method above
+          const existingAccessoryOutdoorTemp = this.accessories.find(accessory => accessory.UUID === uuidOutdoorTemp)
+
+          if (existingAccessoryOutdoorTemp) {
+            // the accessory already exists
+            this.log.info('Restoring existing accessory from cache:', existingAccessoryOutdoorTemp.displayName)
+
+            // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
+            // existingAccessory.context.device = device;
+            // this.api.updatePlatformAccessories([existingAccessory]);
+
+            // TODO: Do we need to do this?
+            // Update existing accessory context
+            existingAccessoryOutdoorTemp.context.device = device
+            existingAccessoryOutdoorTemp.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
+            this.api.updatePlatformAccessories([existingAccessoryOutdoorTemp])
+
+            // create the accessory handler for the restored accessory
+            // this is imported from `platformAccessory.ts`
+            new OutdoorTemperatureAccessory(this, existingAccessoryOutdoorTemp, outdoorTempAccessoryName)
+
+            // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
+            // remove platform accessories when no longer present
+            // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
+            // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
+          } else if (device.DeviceName) {
+            // the accessory does not yet exist, so we need to create it
+            this.log.info('Adding new accessory:', device.DeviceName)
+
+            // create a new accessory
+            const accessory = new this.api.platformAccessory(device.DeviceName, uuidOutdoorTemp)
+
+            // store a copy of the device object in the `accessory.context`
+            // the `context` property can be used to store any data about the accessory you may need
+            accessory.context.device = device
+            accessory.context.deviceDetails = await this.client.getDevice(device.DeviceID, device.BuildingID)
+
+            // create the accessory handler for the newly create accessory
+            // this is imported from `platformAccessory.ts`
+            new OutdoorTemperatureAccessory(this, accessory, outdoorTempAccessoryName)
 
             // link the accessory to your platform
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
